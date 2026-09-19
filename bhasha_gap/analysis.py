@@ -32,6 +32,7 @@ def cells_frame(data: dict) -> pd.DataFrame:
             "coverage": sum(s["coverage"] for s in serps) / n,
             "native_share": sum(s["native_share"] for s in serps) / n,
             "trusted_native": sum(s["trusted_native"] for s in serps) / n,
+            "reliable_share": sum(s["trusted_native"] / max(s["n_results"], 1) for s in serps) / n,
             "mt_share": sum(s.get("machine_translated", 0) / max(s["n_results"], EXPECTED_RESULTS)
                             for s in serps) / n,
             "authority_mean": sum(s["authority_mean"] for s in serps) / n,
@@ -62,6 +63,40 @@ def results_frame(data: dict) -> pd.DataFrame:
     if not df.empty and "machine_translated" not in df:  # datasets from before MT tagging
         df["machine_translated"] = False
     return df
+
+
+def reliable_mask(results: pd.DataFrame) -> pd.Series:
+    """A reliable answer is in the reader's language, from a trusted source, and not machine-translated."""
+    return results["native"] & ~results["machine_translated"] & (results["authority"] >= TRUSTED_MIN_WEIGHT)
+
+
+def language_scorecard(cells: pd.DataFrame, results: pd.DataFrame) -> pd.DataFrame:
+    """Per language: share of top results that are reliable, in the language, or Google Translate copies."""
+    r = results.assign(
+        reliable=reliable_mask(results),
+        own_language=results["native"] & ~results["machine_translated"],
+    )
+    card = r.groupby("lang").agg(
+        reliable=("reliable", "mean"),
+        own_language=("own_language", "mean"),
+        machine_translated=("machine_translated", "mean"),
+        results=("reliable", "size"),
+    )
+    card["coverage"] = cells.groupby("lang")["coverage"].mean()
+    card["topics"] = cells.groupby("lang")["topic"].nunique()
+    return card.sort_values("reliable", ascending=False)
+
+
+def cell_rates(cells: pd.DataFrame, results: pd.DataFrame) -> pd.DataFrame:
+    """`cells` plus per-result percentages, computed exactly like the language scorecard."""
+    rates = (
+        results.assign(reliable=reliable_mask(results))
+        .groupby(["topic", "lang"])
+        .agg(reliable_pct=("reliable", "mean"), native_pct=("native", "mean"), mt_pct=("machine_translated", "mean"))
+        .mul(100)
+        .reset_index()
+    )
+    return cells.merge(rates, on=["topic", "lang"], how="left")
 
 
 def language_summary(cells: pd.DataFrame) -> pd.DataFrame:
@@ -96,27 +131,25 @@ def key_findings(data: dict, cells: pd.DataFrame, results: pd.DataFrame) -> list
     indic_results = results[results["lang"] != "en"]
     en_results = results[results["lang"] == "en"]
 
-    # 1. The language gap: worst-served language vs English.
-    by_lang = indic_cells.groupby("lang")["native_share"].mean()
+    # 1. The language gap: worst-served language vs English (per result, like the scorecard).
+    by_lang = indic_results.groupby("lang")["native"].mean()
     if not by_lang.empty:
         worst = by_lang.idxmin()
-        text = f"of page-one results for {language_label(worst)} questions are actually in {language_label(worst).split(' ·')[0]}"
-        if "en" in set(cells["lang"]):
-            text += f", vs {_pct(cells.loc[cells['lang'] == 'en', 'native_share'].mean())} for English"
+        name = language_label(worst).split(" ·")[0]
+        text = f"of page-one results for {name} questions are actually written in {name}"
+        if not en_results.empty:
+            text += f", vs {_pct(en_results['native'].mean())} for English"
         findings.append({"label": "Language gap", "value": _pct(by_lang[worst]), "text": text + "."})
 
-    # 2. The trust gap: native results that come from official/medical sources.
-    def trusted_share(df: pd.DataFrame) -> float:
-        own = df[df["native"] & ~df["machine_translated"]]
-        return (own["authority"] >= TRUSTED_MIN_WEIGHT).mean() if len(own) else float("nan")
-
-    trust = indic_results.groupby("lang").apply(trusted_share, include_groups=False).dropna()
-    if not trust.empty:
-        worst = trust.idxmin()
-        text = f"of {language_label(worst)} results come from official or medical sources"
+    # 2. The trust gap: top results that are reliable (in the language, trusted, not machine-translated).
+    reliable = indic_results.assign(ok=reliable_mask(indic_results)).groupby("lang")["ok"].mean()
+    if not reliable.empty:
+        worst = reliable.idxmin()
+        name = language_label(worst).split(" ·")[0]
+        text = f"of top results for {name} questions are trustworthy pages written in {name}"
         if not en_results.empty:
-            text += f", vs {_pct(trusted_share(en_results))} in English"
-        findings.append({"label": "Trust gap", "value": _pct(trust[worst]), "text": text + "."})
+            text += f", vs {_pct(reliable_mask(en_results).mean())} for English"
+        findings.append({"label": "Trust gap", "value": _pct(reliable[worst]), "text": text + "."})
 
     # 3. Machine translation filling the gap.
     mt = indic_results[indic_results["machine_translated"]]
@@ -127,7 +160,8 @@ def key_findings(data: dict, cells: pd.DataFrame, results: pd.DataFrame) -> list
         findings.append({
             "label": "Machine-translated",
             "value": _pct(by_lang[top]),
-            "text": f"of {language_label(top)} results are Google Translate copies of English pages ({sources}).",
+            "text": f"of results for {language_label(top).split(' ·')[0]} questions are Google Translate copies "
+                    f"of foreign websites ({sources}).",
         })
 
     # 4. Hidden demand: Indian-language demand inside English Autocomplete,
@@ -152,7 +186,7 @@ def key_findings(data: dict, cells: pd.DataFrame, results: pd.DataFrame) -> list
         findings.append({
             "label": "Autocomplete is silent",
             "value": f"{round(silent[lang] * n_topics)}/{n_topics}",
-            "text": f"health topics get at most one related Autocomplete suggestion in {language_label(lang)}. "
+            "text": f"health topics get almost no related Autocomplete suggestions in {language_label(lang).split(' ·')[0]}: "
                     "Google has too little search data in the language to suggest anything.",
         })
 
@@ -162,8 +196,9 @@ def key_findings(data: dict, cells: pd.DataFrame, results: pd.DataFrame) -> list
         findings.append({
             "label": "Biggest gap",
             "value": f"{w['gap']:.0f}/100",
-            "text": f"{w['topic']} in {language_label(w['lang'])}: people ask \"{w['queries'].split(' | ')[0]}\" "
-                    f"and {w['trusted_native']:.0f} of the top results are trustworthy and in their language.",
+            "text": f"{w['topic']} in {language_label(w['lang']).split(' ·')[0]}: people ask "
+                    f"\"{w['queries'].split(' | ')[0]}\", and {w['trusted_native']:.0f} of the top results "
+                    "are trustworthy and in their language.",
         })
     return findings
 

@@ -6,7 +6,7 @@ Bhasha Gap uses the search results page as a **measurement instrument**, not as 
 For each topic, a native-language seed term (for example `मधुमेह`, `நீரிழிவு`) is sent to SerpApi's **Google Autocomplete** engine with `hl=<language>` and `gl=in`. Autocomplete reflects what real users type, so the suggestions are real questions in real phrasing. The demand signal is the number of suggestions written in the target language, normalised to 0–100 across the dataset.
 
 Two kinds of suggestion are never used as the question to measure:
-- **Translation requests** like "fever meaning in hindi" or "बुखार in english". In India these are often the *top* English suggestions, and they count as **hidden demand** for Indian-language content.
+- **Translation requests** like "fever meaning in hindi", "बुखार in english" or "టీకా అర్థం" ("vaccine meaning"). The word for *meaning* is recognised in all 9 languages. In India these are often the *top* English suggestions, and they count as **hidden demand** for Indian-language content.
 - **Off-topic suggestions.** In low-resource languages, Autocomplete sometimes returns unrelated words, such as Odia ସ୍ବଭାବ ("nature") for dengue, or Punjabi ਤਬੀਲਿਸੀ ("Tbilisi") for TB. A suggestion counts only if it contains the seed or its first word is a close spelling of it (similarity ≥ 0.6). When nothing qualifies, the seed itself is searched. A language where most topics get no related suggestion is reported as **Autocomplete is silent**.
 
 **2. Supply: what Google returns.**
@@ -20,6 +20,9 @@ The top native suggestions, or the seed itself if there are none, are searched w
 - **People also ask.** Whether Google's related-questions block exists in the language.
 
 **3. Scores.**
+
+The headline measure is **reliable answers**: the share of top results that are (a) written in the reader's language, (b) from an official or medical source (authority ≥ 0.8), and (c) not a Google Translate copy. It is computed per result, so every percentage on the page (scorecard, findings, topic map) uses the same denominator. A checked question is *Well served* at 50% reliable answers or more, *Partly served* at 25–49%, and *Poorly served* below 25%.
+
 
 | Score | Formula |
 |---|---|

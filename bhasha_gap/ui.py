@@ -1,113 +1,170 @@
-"""HTML building blocks for the dashboard's story sections.
+"""HTML building blocks for the dashboard.
 
 Pure functions that turn collected data into HTML strings, so they can be
 tested without Streamlit. Every piece of text that comes from search data is
-escaped.
+escaped, and links are only emitted for http(s) URLs.
 """
 
 from __future__ import annotations
 
+from datetime import datetime
 from html import escape
+from urllib.parse import urlparse
 
 import pandas as pd
 
 from . import LANGUAGE_NAMES
 from .scoring import TRUSTED_MIN_WEIGHT
 
-LANG_COLORS = {
-    "en": "#3b6ea5", "hi": "#e76f51", "bn": "#2a9d8f", "mr": "#f4a261", "ta": "#9b5de5",
-    "te": "#d4a017", "as": "#ef476f", "or": "#06a77d", "pa": "#118ab2",
-    "kn": "#8338ec", "ml": "#fb5607", "gu": "#3a86ff",
+# Plain-language names for source tiers, shared with the charts.
+TIER_LABELS = {
+    "official": "Government / WHO",
+    "medical": "Hospital / medical",
+    "reference": "Encyclopedia",
+    "news": "News site",
+    "machine_translated": "Google Translate copy",
+    "unknown": "Unverified website",
+    "ugc": "Social media / video",
 }
-FINDING_ICONS = {
-    "Language gap": "🗣️", "Trust gap": "🛡️", "Machine-translated": "🤖",
-    "Hidden demand": "🔍", "Autocomplete is silent": "🔇", "Biggest gap": "🎯",
+TIER_COLORS = {
+    "official": "#1f5f3f", "medical": "#3f8f63", "reference": "#7aa693", "news": "#c58a17",
+    "machine_translated": "#6d4bb3", "unknown": "#a3a3a3", "ugc": "#b4441b",
+}
+
+_ICONS = {
+    "type": '<rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6.5 10h1M10.5 10h1M14.5 10h1M8 14h8"/>',
+    "search": '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+    "shield": '<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
 }
 
 
-def _color(lang: str) -> str:
-    return LANG_COLORS.get(lang, "#6c757d")
+def icon(name: str) -> str:
+    return (f'<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" '
+            f'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{_ICONS[name]}</svg>')
 
 
-def _names(lang: str) -> tuple[str, str]:
-    return LANGUAGE_NAMES.get(lang, (lang, lang))
+def lang_name(code: str | None) -> str:
+    return LANGUAGE_NAMES.get(code, (code or "another language", ""))[0]
 
 
-def mood(coverage: float) -> tuple[str, str]:
-    """A face and a plain-words label for a 0-100 coverage score."""
-    if coverage >= 85:
-        return "😀", "Well served"
-    if coverage >= 70:
-        return "🙂", "Mostly OK"
-    if coverage >= 50:
-        return "😐", "Patchy"
-    return "😟", "Poorly served"
+def native_name(code: str) -> str:
+    return LANGUAGE_NAMES.get(code, (code, code))[1]
 
 
-def hero(data: dict, cells: pd.DataFrame) -> str:
-    """Banner with real questions people typed, floating in their own scripts."""
-    bubbles, seen = [], set()
-    for c in data["cells"]:
-        if c["lang"] in seen:
-            continue
-        text = next((s["text"] for s in c["suggestions"] if s["native"] and len(s["text"]) <= 32), None)
-        if text:
-            seen.add(c["lang"])
-            bubbles.append((c["lang"], text))
-    chips = "".join(
-        f'<span class="bubble" style="--c:{_color(lang)};animation-delay:{i * 0.35:.2f}s" '
-        f'title="{escape(_names(lang)[0])}">{escape(text)}</span>'
-        for i, (lang, text) in enumerate(bubbles)
-    )
+def safe_url(url: str) -> str | None:
+    """The URL if it is a plain web link, else None (never emit javascript: or data: links)."""
+    return url if urlparse(url).scheme in ("http", "https") else None
+
+
+def pretty_date(iso: str) -> str:
+    try:
+        return datetime.fromisoformat(iso).strftime("%d %b %Y").lstrip("0")
+    except ValueError:
+        return iso
+
+
+def pct(x: float) -> str:
+    return f"{100 * x:.0f}%"
+
+
+def band(share: float) -> str:
+    return "good" if share >= 0.5 else "mid" if share >= 0.25 else "bad"
+
+
+# ---------------------------------------------------------------- page sections
+def masthead(data: dict, card: pd.DataFrame) -> str:
+    """Headline written from the data: the worst-served language vs English."""
+    indic = card.drop(index="en", errors="ignore")
     n_searches = sum(len(c["serps"]) for c in data["cells"])
-    stats = (f'<b>{cells["lang"].nunique()}</b> languages · <b>{cells["topic"].nunique()}</b> topics · '
-             f'<b>{n_searches}</b> real Google searches')
+    if not indic.empty and "en" in card.index:
+        worst = indic["reliable"].idxmin()
+        w, e = indic.loc[worst, "reliable"], card.loc["en", "reliable"]
+        headline = (f"Ask Google a health question in {lang_name(worst)}, and only "
+                    f"<em>{100 * w:.0f} in 100</em> answers are trustworthy pages you can read.")
+        dek = (f"Ask the same kind of question in English and it’s {100 * e:.0f} in 100. "
+               f"Bhasha Gap measures this gap across {card.shape[0]} languages using {n_searches} real "
+               "Google searches from India.")
+    else:
+        headline = "How often does Google answer Indians in their own language?"
+        dek = f"Bhasha Gap measures it using {n_searches} real Google searches from India."
     return (
-        '<div class="hero">'
-        '<div class="hero-kicker">🗣️ India speaks many languages. Does the internet?</div>'
-        '<h1>Bhasha Gap</h1>'
-        '<p class="hero-tag">Millions of Indians search for health information in their own language. '
-        'We measured how often Google gives them a trustworthy answer they can read.</p>'
-        f'<div class="bubbles">{chips}</div>'
-        f'<div class="hero-stats">{stats}</div>'
-        '<div class="hero-note">These floating questions are real searches people typed, collected from Google Autocomplete.</div>'
-        '</div>'
+        '<header class="masthead">'
+        '<div class="brand"><span class="wordmark">Bhasha Gap</span><span class="brand-native">भाषा</span></div>'
+        f'<div class="kicker">Data investigation · {escape(data.get("domain_name", ""))} information in Indian languages</div>'
+        f'<h1 class="headline">{headline}</h1>'
+        f'<p class="dek">{escape(dek)}</p>'
+        f'<div class="meta">Collected {escape(pretty_date(data["collected_at"]))} · Google India (google.co.in) '
+        'via SerpApi · No AI-generated data</div>'
+        '</header>'
     )
 
 
-def how_it_works() -> str:
+def stat_strip(findings: list[dict]) -> str:
+    items = "".join(
+        f'<div class="stat"><div class="stat-label">{escape(f["label"])}</div>'
+        f'<div class="stat-value">{escape(f["value"])}</div>'
+        f'<div class="stat-text">{escape(f["text"])}</div></div>'
+        for f in findings
+    )
+    return f'<div class="stats">{items}</div>'
+
+
+def how_it_works(data: dict) -> str:
+    examples = []
+    for c in data["cells"]:
+        if c["lang"] != "en" and c["lang"] not in {lang for lang, _ in examples}:
+            text = next((s["text"] for s in c["suggestions"] if s["native"] and len(s["text"]) <= 28), None)
+            if text:
+                examples.append((c["lang"], text))
+    sample = " · ".join(f'<span title="{escape(lang_name(lang))}">{escape(t)}</span>' for lang, t in examples[:6])
     steps = [
-        ("⌨️", "What people type", "Google Autocomplete reveals the real questions people ask, in each language."),
-        ("🔎", "What Google shows", "We search those exact questions from India, just like a real person would."),
-        ("✅", "We grade every answer", "Is it in their language? Is it from a trusted source? Or just a Google Translate copy?"),
+        ("type", "What people ask",
+         "For each topic and language, Google Autocomplete shows the questions people really type."
+         + (f'<div class="examples">{sample}</div>' if sample else "")),
+        ("search", "What Google shows",
+         "We run those exact questions on Google India, in that language, and record the top results."),
+        ("shield", "How each answer rates",
+         "Every result is checked: is it written in the reader’s language, is it from a trusted source, "
+         "and is it just a Google Translate copy of a foreign page?"),
     ]
-    cards = "".join(
-        f'<div class="step"><div class="step-icon">{icon}</div><div class="step-num">Step {i}</div>'
+    cols = "".join(
+        f'<div class="step">{icon(ic)}<div class="step-num">{i:02d}</div>'
         f'<div class="step-title">{title}</div><div class="step-text">{text}</div></div>'
-        for i, (icon, title, text) in enumerate(steps, start=1)
+        for i, (ic, title, text) in enumerate(steps, start=1)
     )
-    return f'<div class="steps">{cards}</div>'
+    return f'<div class="steps">{cols}</div>'
 
 
-_TIER_BADGES = {
-    "reference": ('info', "📚 Encyclopedia"),
-    "news": ('info', "📰 News site"),
-    "ugc": ('warn', "📱 Social / video"),
-}
-
-
-def _badges(r: dict, lang_name: str) -> str:
-    badges = []
-    if r.get("machine_translated"):
-        badges.append(('mt', "🤖 Google Translate copy"))
-    elif not r["native"]:
-        badges.append(('off', f"🌐 Not in {lang_name}"))
-    if not r.get("machine_translated"):
-        if r["authority"] >= TRUSTED_MIN_WEIGHT:
-            badges.append(('ok', "✅ Trusted source"))
+def result_list(results: list[dict], lang: str) -> str:
+    """Google-style list of results with clickable titles and plain-language labels."""
+    if not results:
+        return '<p class="muted">Google returned no results.</p>'
+    items = []
+    for r in results:
+        url = safe_url(r.get("link", ""))
+        title = escape(r.get("title") or r.get("domain") or "Untitled")
+        title_html = (f'<a href="{escape(url, quote=True)}" target="_blank" rel="noopener noreferrer">{title}</a>'
+                      if url else title)
+        mt = r.get("machine_translated", False)
+        reliable = r["native"] and not mt and r["authority"] >= TRUSTED_MIN_WEIGHT
+        tags = []
+        if reliable:
+            tags.append('<span class="tag tag-good">✓ Reliable answer</span>')
+        if mt:
+            tags.append(f'<span class="tag tag-mt">Google Translate copy of {escape(r["domain"])}</span>')
+        elif r["native"]:
+            tags.append(f'<span class="tag">In {escape(lang_name(lang))}</span>')
         else:
-            badges.append(_TIER_BADGES.get(r["tier"], ('warn', "⚠️ Unverified source")))
-    return "".join(f'<span class="badge {cls}">{escape(label)}</span>' for cls, label in badges)
+            tags.append(f'<span class="tag tag-off">In {escape(lang_name(r.get("detected_lang")))}</span>')
+        if not mt:
+            color = TIER_COLORS.get(r["tier"], "#a3a3a3")
+            tags.append(f'<span class="tag"><i class="dot" style="background:{color}"></i>'
+                        f'{escape(TIER_LABELS.get(r["tier"], r["tier"]))}</span>')
+        items.append(
+            f'<li class="result"><div class="r-domain">{escape(r["domain"])}</div>'
+            f'<div class="r-title">{title_html}</div><div class="r-tags">{"".join(tags)}</div></li>'
+        )
+    return f'<ol class="results">{"".join(items)}</ol>'
 
 
 def pick_story_cell(data: dict, cells: pd.DataFrame) -> dict | None:
@@ -121,8 +178,8 @@ def pick_story_cell(data: dict, cells: pd.DataFrame) -> dict | None:
 
 def _verdict_count(good: int, total: int) -> str:
     if good == 0:
-        return f"<b>None</b> of the {total} answers are"
-    return f"Only <b>{good}</b> of {total} answers {'is' if good == 1 else 'are'}"
+        return f"<b>None</b> of the {total} results were"
+    return f"Only <b>{good}</b> of {total} results {'was' if good == 1 else 'were'}"
 
 
 def story(data: dict, cells: pd.DataFrame, max_results: int = 5) -> str:
@@ -130,59 +187,69 @@ def story(data: dict, cells: pd.DataFrame, max_results: int = 5) -> str:
     if cell is None:
         return ""
     serp = cell["serps"][0]
-    english_name, native_name = _names(cell["lang"])
-    rows = "".join(
-        f'<div class="result"><div class="r-title">{escape(r["title"][:90])}</div>'
-        f'<div class="r-domain">{escape(r["domain"])}</div><div class="r-badges">{_badges(r, english_name)}</div></div>'
-        for r in serp["results"][:max_results]
-    )
+    name = lang_name(cell["lang"])
     en = cells[(cells["lang"] == "en") & (cells["topic"] == cell["topic"])]
     compare = ""
     if not en.empty:
-        compare = (f' Someone asking about {escape(cell["topic"].lower())} in English gets '
-                   f'<b>{en.iloc[0]["trusted_native"]:.0f}</b>.')
+        compare = (f' For an English question about {escape(cell["topic"].lower())}, '
+                   f'<b>{en.iloc[0]["trusted_native"]:.0f}</b> were.')
     return (
         '<div class="story">'
-        f'<div class="story-who">🧑‍🦱 Someone searches in <b style="color:{_color(cell["lang"])}">'
-        f'{escape(english_name)} · {escape(native_name)}</b> about <b>{escape(cell["topic"].lower())}</b>:</div>'
-        f'<div class="searchbar">🔍 <span>{escape(serp["query"])}</span></div>'
-        f'<div class="results">{rows}</div>'
-        f'<div class="story-verdict">{_verdict_count(serp["trusted_native"], serp["n_results"])} '
-        f'trustworthy <i>and</i> in {escape(english_name)}.{compare}</div>'
+        f'<div class="story-head">A real {escape(name)} search about <b>{escape(cell["topic"].lower())}</b>, '
+        'exactly as Google India returned it</div>'
+        f'<div class="searchbar">{icon("search")}<span lang="{escape(cell["lang"])}">{escape(serp["query"])}</span></div>'
+        f'{result_list(serp["results"][:max_results], cell["lang"])}'
+        f'<div class="verdict">{_verdict_count(serp["trusted_native"], serp["n_results"])} trustworthy pages '
+        f'written in {escape(name)}.{compare}</div>'
         '</div>'
     )
 
 
-def leaderboard(cells: pd.DataFrame, results: pd.DataFrame) -> str:
-    """One tile per language, best served first: score ring, face, plain-words stats."""
-    by_lang = cells.groupby("lang").agg(coverage=("coverage", "mean"), trusted=("trusted_native", "mean"))
-    mt = results.groupby("lang")["machine_translated"].mean() if not results.empty else pd.Series(dtype=float)
-    tiles = []
-    for rank, (lang, row) in enumerate(by_lang.sort_values("coverage", ascending=False).iterrows(), start=1):
-        english_name, native_name = _names(lang)
-        face, label = mood(row.coverage)
-        medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(rank, f"#{rank}")
-        mt_pct = 100 * mt.get(lang, 0.0)
-        extra = f'<div class="tile-line">🤖 {mt_pct:.0f}% Google Translate copies</div>' if mt_pct >= 1 else ""
-        baseline = '<span class="baseline">baseline</span>' if lang == "en" else ""
-        tiles.append(
-            f'<div class="tile" style="--c:{_color(lang)}">'
-            f'<div class="tile-rank">{medal}</div>'
-            f'<div class="ring" style="--p:{row.coverage:.0f}"><span>{row.coverage:.0f}</span></div>'
-            f'<div class="tile-native">{escape(native_name)}</div>'
-            f'<div class="tile-name">{escape(english_name)} {baseline}</div>'
-            f'<div class="tile-mood">{face} {label}</div>'
-            f'<div class="tile-line">🛡️ {row.trusted:.1f} trusted answers per question</div>'
-            f'{extra}</div>'
+def scorecard(card: pd.DataFrame) -> str:
+    """One row per language, best served first, with a bar for reliable answers."""
+    head = ('<div class="sc-row sc-head"><div></div><div>Language</div><div>Reliable answers</div>'
+            '<div class="num">In the language</div><div class="num">Translate copies</div></div>')
+    rows, rank = [], 0
+    for lang, row in card.iterrows():
+        is_base = lang == "en"
+        if not is_base:
+            rank += 1
+        rows.append(
+            f'<div class="sc-row{" sc-base" if is_base else ""}">'
+            f'<div class="sc-rank">{"—" if is_base else rank}</div>'
+            f'<div class="sc-lang"><span class="sc-name">{escape(lang_name(lang))}</span>'
+            f'<span class="sc-native" lang="{escape(lang)}">{escape(native_name(lang)) if not is_base else "baseline"}</span></div>'
+            f'<div class="sc-bar"><div class="sc-track"><div class="sc-fill {band(row.reliable)}" '
+            f'style="width:{100 * row.reliable:.1f}%"></div></div><span class="sc-val">{pct(row.reliable)}</span></div>'
+            f'<div class="num">{pct(row.own_language + row.machine_translated)}</div>'
+            f'<div class="num{" warn" if row.machine_translated >= 0.05 else ""}">{pct(row.machine_translated)}</div>'
+            '</div>'
         )
-    return f'<div class="tiles">{"".join(tiles)}</div>'
+    return f'<div class="scorecard">{head}{"".join(rows)}</div>'
 
 
-def findings_cards(findings: list[dict]) -> str:
-    cards = "".join(
-        f'<div class="finding"><div class="f-icon">{FINDING_ICONS.get(f["label"], "📌")}</div>'
-        f'<div class="label">{escape(f["label"])}</div><div class="value">{escape(f["value"])}</div>'
-        f'<div class="text">{escape(f["text"])}</div></div>'
-        for f in findings
+def verdict_card(result: dict) -> str:
+    a = result["serp"]
+    cls = {"Well served": "good", "Partly served": "mid", "Poorly served": "bad"}[result["verdict"]]
+    return (
+        f'<div class="verdict-card {cls}"><div class="vc-lang">{escape(lang_name(result["lang"]))}</div>'
+        f'<div class="vc-verdict">{escape(result["verdict"])}</div>'
+        f'<div class="vc-q" lang="{escape(result["lang"])}">“{escape(result["question"])}”</div>'
+        f'<div class="vc-line">{a["trusted_native"]} of {a["n_results"]} results are reliable answers</div></div>'
     )
-    return f'<div class="findings">{cards}</div>'
+
+
+def chips(suggestions: list[dict]) -> str:
+    if not suggestions:
+        return '<p class="muted">Google Autocomplete had no suggestions.</p>'
+    return '<div class="chips">' + "".join(
+        f'<span class="chip{"" if s["native"] else " off"}">{escape(s["text"])}</span>' for s in suggestions
+    ) + "</div>"
+
+
+def footer(data: dict) -> str:
+    return (
+        '<footer class="footer"><div><b>Bhasha Gap</b> · built for the SerpApi India Hackathon 2026</div>'
+        f'<div>Data: Google Autocomplete and Google Search (google.co.in) via SerpApi, collected '
+        f'{escape(pretty_date(data["collected_at"]))}. Every figure is computed from real search results.</div></footer>'
+    )

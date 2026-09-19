@@ -53,10 +53,15 @@ def check_cost(client: SerpClient, question: str, lang: str) -> int:
     )
 
 
-def verdict(coverage: float) -> str:
-    if coverage >= 75:
+def reliable_share(serp: dict) -> float:
+    return serp["trusted_native"] / serp["n_results"] if serp["n_results"] else 0.0
+
+
+def verdict(share: float) -> str:
+    """Plain-words verdict from the share of reliable answers (same bands as the scorecard)."""
+    if share >= 0.5:
         return "Well served"
-    if coverage >= 40:
+    if share >= 0.25:
         return "Partly served"
     return "Poorly served"
 
@@ -73,7 +78,7 @@ def check_question(client: SerpClient, question: str, lang: str) -> dict:
         "lang": lang,
         "checked_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "hl_fallback": bool(ac.get("hl_fallback") or serp.get("hl_fallback")),
-        "verdict": verdict(a["coverage"]),
+        "verdict": verdict(reliable_share(a)),
         **assess_suggestions(suggestions, question, lang),
         "serp": a,
     }

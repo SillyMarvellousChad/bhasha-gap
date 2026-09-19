@@ -169,7 +169,9 @@ def matches_language(text: str, lang: str) -> bool:
 # translation, not an answer. In English cells this is hidden Indian-language demand.
 _TRANSLATION_SEEKING = re.compile(
     r"\bmeaning\b|\bmatlab\b|\bin (english|hindi|marathi|bengali|bangla|tamil|telugu|assamese|odia|oriya"
-    r"|punjabi|gujarati|kannada|malayalam|urdu)\b|मतलब|अर्थ",
+    r"|punjabi|gujarati|kannada|malayalam|urdu)\b"
+    # "meaning" in Hindi/Marathi, Bengali/Assamese, Tamil, Telugu, Odia, Punjabi
+    r"|मतलब|अर्थ|অর্থ|அர்த்தம்|అర్థం|ଅର୍ଥ|ਅਰਥ|ਮਤਲਬ",
     re.IGNORECASE,
 )
 

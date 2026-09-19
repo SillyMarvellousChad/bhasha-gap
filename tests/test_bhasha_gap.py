@@ -290,7 +290,7 @@ def test_serpapi_error_in_one_cell_does_not_stop_the_run(tmp_path):
 
 
 # ------------------------------------------------------------ check any question
-from bhasha_gap.check import check_cost, check_question, load_checks, resolve_language, save_check, verdict
+from bhasha_gap.check import check_cost, check_question, load_checks, reliable_share, resolve_language, save_check, verdict
 
 
 @pytest.mark.parametrize("question, choice, lang, has_note", [
@@ -314,12 +314,13 @@ def test_check_question_and_cost(tmp_path):
     client = FakeClient("fake", tmp_path)
     r = check_question(client, "  डेंगू के लक्षण  ", "hi")
     assert r["question"] == "डेंगू के लक्षण"
-    assert r["serp"]["n_results"] == 2 and r["verdict"] == verdict(r["serp"]["coverage"])
+    assert r["serp"]["n_results"] == 2 and r["verdict"] == verdict(reliable_share(r["serp"]))
     assert check_cost(SerpClient(None, tmp_path / "empty"), "x", "hi") == 2
 
 
 def test_verdict_thresholds():
-    assert [verdict(v) for v in (90, 75, 50, 39.9)] == ["Well served", "Well served", "Partly served", "Poorly served"]
+    assert [verdict(v) for v in (0.9, 0.5, 0.3, 0.1, 0.0)] == [
+        "Well served", "Well served", "Partly served", "Poorly served", "Poorly served"]
 
 
 def test_check_history_keeps_latest_per_question(tmp_path):
@@ -336,6 +337,8 @@ def test_check_history_keeps_latest_per_question(tmp_path):
     ("fever in hindi", True),
     ("बुखार in english", True),
     ("thyroid ka matlab", True),
+    ("టీకా అర్థం", True),
+    ("காய்ச்சல் அர்த்தம்", True),
     ("fever symptoms", False),
     ("बुखार के लक्षण", False),
 ])
@@ -373,27 +376,57 @@ def test_off_topic_suggestions_are_not_demand_or_queries():
 
 
 # ------------------------------------------------------------ UI building blocks
-def test_ui_blocks_render_and_escape(tmp_path):
-    from bhasha_gap import ui
-    from bhasha_gap.analysis import key_findings
-
+def _ui_data(tmp_path):
+    from bhasha_gap.analysis import cell_rates, language_scorecard
     data = collect(DOMAIN, FakeClient("fake", tmp_path))
-    data["cells"][1]["suggestions"].insert(0, {"text": "डेंगू <script>x</script>", "native": True})
-    cells, results = cells_frame(data), results_frame(data)
-    hero = ui.hero(data, cells)
-    assert "<script>" not in hero and "&lt;script&gt;" in hero
-    assert "2</b> real Google searches" in hero
-    assert "Step 3" in ui.how_it_works()
+    results = results_frame(data)
+    cells = cell_rates(cells_frame(data), results)
+    return data, cells, results, language_scorecard(cells, results)
+
+
+def test_result_list_links_are_clickable_and_safe():
+    from bhasha_gap.ui import result_list
+    rows = [
+        {"title": "डेंगू <b>", "link": "https://www.who.int/x", "domain": "who.int", "native": True,
+         "machine_translated": False, "authority": 1.0, "tier": "official", "detected_lang": "hi"},
+        {"title": "evil", "link": "javascript:alert(1)", "domain": "x", "native": False,
+         "machine_translated": False, "authority": 0.35, "tier": "unknown", "detected_lang": "en"},
+        {"title": "MT", "link": "https://translate.google.com/translate?u=https://mayoclinic.org/a&tl=hi",
+         "domain": "mayoclinic.org", "native": True, "machine_translated": True, "authority": 0.5,
+         "tier": "machine_translated", "detected_lang": "hi"},
+    ]
+    out = result_list(rows, "hi")
+    assert '<a href="https://www.who.int/x" target="_blank" rel="noopener noreferrer">' in out
+    assert "javascript:" not in out and "<b>" not in out and "&lt;b&gt;" in out
+    assert "✓ Reliable answer" in out and "Government / WHO" in out
+    assert "Google Translate copy of mayoclinic.org" in out and "In English" in out
+
+
+def test_masthead_scorecard_and_story(tmp_path):
+    from bhasha_gap import ui
+    data, cells, results, card = _ui_data(tmp_path)
+    head = ui.masthead(data, card)
+    assert "Ask Google a health question in Hindi" in head and "2 real Google searches" in head
+    board = ui.scorecard(card)
+    assert board.index("English") < board.index("Hindi") and "baseline" in board
     assert ui.story(data, cells) == ""  # the fake Hindi SERP has only 2 results: too few to tell a story
     cells.loc[cells["lang"] == "hi", "n_results"] = 8
     story = ui.story(data, cells)
     assert "डेंगू के लक्षण क्या है" in story and "Google Translate copy" not in story
-    board = ui.leaderboard(cells, results)
-    assert board.index("English") < board.index("Hindi")  # English is better served in the fake data
-    assert "🛡️" in ui.findings_cards(key_findings(data, cells, results))
 
 
-@pytest.mark.parametrize("score, label", [(90, "Well served"), (75, "Mostly OK"), (55, "Patchy"), (20, "Poorly served")])
-def test_mood(score, label):
-    from bhasha_gap.ui import mood
-    assert mood(score)[1] == label
+def test_stat_strip_and_chips_escape(tmp_path):
+    from bhasha_gap import ui
+    from bhasha_gap.analysis import key_findings
+    data, cells, results, _ = _ui_data(tmp_path)
+    assert "Trust gap" in ui.stat_strip(key_findings(data, cells, results))
+    chips = ui.chips([{"text": "<script>x</script>", "native": False}])
+    assert "<script>" not in chips and "chip off" in chips
+    assert "Step" not in ui.how_it_works(data) and "What people ask" in ui.how_it_works(data)
+
+
+def test_scorecard_rates_match_findings(tmp_path):
+    data, cells, results, card = _ui_data(tmp_path)
+    assert card.loc["en", "reliable"] == 1.0   # CDC + Mayo Clinic, both English and trusted
+    assert card.loc["hi", "reliable"] == 0.0   # WHO page is English; the Hindi one is YouTube
+    assert set(cells.columns) >= {"reliable_pct", "native_pct", "mt_pct"}
