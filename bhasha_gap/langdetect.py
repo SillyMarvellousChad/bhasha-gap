@@ -165,6 +165,19 @@ def matches_language(text: str, lang: str) -> bool:
     return found.lang is None or found.lang == lang
 
 
+# "fever meaning in hindi", "बुखार in english", "ताप मतलब": the searcher wants a
+# translation, not an answer. In English cells this is hidden Indian-language demand.
+_TRANSLATION_SEEKING = re.compile(
+    r"\bmeaning\b|\bmatlab\b|\bin (english|hindi|marathi|bengali|bangla|tamil|telugu|assamese|odia|oriya"
+    r"|punjabi|gujarati|kannada|malayalam|urdu)\b|मतलब|अर्थ",
+    re.IGNORECASE,
+)
+
+
+def seeks_translation(text: str) -> bool:
+    return bool(_TRANSLATION_SEEKING.search(text))
+
+
 def is_romanized_indic(text: str) -> bool:
     """Heuristic: Latin-script text that reads like transliterated Hindi."""
     if dominant_script(text) != "Latin":

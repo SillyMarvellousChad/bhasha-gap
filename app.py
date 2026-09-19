@@ -14,8 +14,10 @@ from dotenv import load_dotenv
 
 from bhasha_gap import LANGUAGE_NAMES, language_label
 from bhasha_gap.analysis import cells_frame, key_findings, language_summary, load_results, pivot, results_frame
+from bhasha_gap.check import check_cost, check_question, load_checks, resolve_language, save_check
 from bhasha_gap.collect import collect, estimate_credits, load_domain, plan_cells, save_results
-from bhasha_gap.serp import SerpApiError, SerpClient
+from bhasha_gap.langdetect import LANG_SCRIPT
+from bhasha_gap.serp import CacheMiss, SerpApiError, SerpClient
 
 load_dotenv()
 st.set_page_config(page_title="Bhasha Gap", page_icon="🗺️", layout="wide")
@@ -56,6 +58,32 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+
+# ---------------------------------------------------------------- shared views
+def suggestion_chips(suggestions: list[dict]) -> None:
+    chips = "".join(
+        f'<span class="qchip{"" if s["native"] else " off"}">{html.escape(s["text"])}</span>'
+        for s in suggestions
+    ) or "<em>No suggestions</em>"
+    st.markdown(chips, unsafe_allow_html=True)
+    st.caption("Struck-through suggestions are not in the target language, or are unrelated to the topic.")
+
+
+def results_table(rows: list[dict]) -> None:
+    df = pd.DataFrame(rows)
+    if df.empty:
+        st.write("Google returned no results.")
+        return
+    if "machine_translated" not in df:
+        df["machine_translated"] = False
+    st.dataframe(
+        df[["position", "title", "domain", "detected_lang", "native", "machine_translated", "tier", "link"]],
+        hide_index=True, width="stretch",
+        column_config={"link": st.column_config.LinkColumn("link", display_text="open"),
+                       "native": st.column_config.CheckboxColumn("in language"),
+                       "machine_translated": st.column_config.CheckboxColumn("Google Translate")},
+    )
 
 
 # ---------------------------------------------------------------- sidebar
@@ -151,8 +179,8 @@ if findings:
 if data.get("skipped"):
     st.caption(f"{len(data['skipped'])} cells not collected yet (credit cap). They are excluded above.")
 
-tab_map, tab_lang, tab_drill, tab_write, tab_method = st.tabs(
-    ["Gap map", "Languages & sources", "Drill down", "Write next", "Method"]
+tab_map, tab_check, tab_lang, tab_drill, tab_write, tab_method = st.tabs(
+    ["Gap map", "Check a question", "Languages & sources", "Drill down", "Write next", "Method"]
 )
 
 # ---------------------------------------------------------------- gap map
@@ -179,6 +207,78 @@ with tab_map:
                       xaxis=dict(side="top"), yaxis=dict(autorange="reversed"))
     st.caption(subtitle)
     st.plotly_chart(fig, width="stretch")
+
+# ---------------------------------------------------------------- check a question
+VERDICT_COLORS = {"Well served": "#1b7f5a", "Partly served": "#d9a441", "Poorly served": "#c8553d"}
+
+
+def render_check(result: dict, english_benchmark: float | None) -> None:
+    a = result["serp"]
+    color = VERDICT_COLORS[result["verdict"]]
+    st.markdown(
+        f'<div class="finding" style="border-left-color:{color}">'
+        f'<div class="label">{html.escape(language_label(result["lang"]))}</div>'
+        f'<div class="value" style="color:{color}">{result["verdict"]}</div>'
+        f'<div class="text">{html.escape(result["question"])}</div></div>',
+        unsafe_allow_html=True,
+    )
+    st.write("")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Coverage", f"{a['coverage']:.0f}/100",
+              None if english_benchmark is None else f"{a['coverage'] - english_benchmark:+.0f} vs English avg")
+    m2.metric("In the language", f"{a['native_count']}/{a['n_results']}")
+    m3.metric("Trustworthy + in language", a["trusted_native"])
+    m4.metric("Google Translate copies", a.get("machine_translated", 0))
+    if result.get("hl_fallback"):
+        st.caption(f"Google has no {language_label(result['lang'])} interface for this engine, "
+                   "so it was searched without a language setting.")
+    st.markdown("**Other questions people type** (Google Autocomplete):")
+    suggestion_chips(result["suggestions"])
+    st.markdown("**What Google shows**")
+    results_table(a["results"])
+    if a["related_questions"]:
+        st.caption("People also ask: " + " · ".join(a["related_questions"]))
+
+
+with tab_check:
+    st.subheader("Check any question")
+    st.caption("Type a health question the way someone would search it, in their own language. "
+               "Bhasha Gap runs the same measurement live: 2 SerpApi credits, or free if it was checked before.")
+    q_col, l_col = st.columns([3, 1])
+    question = q_col.text_input("Question", placeholder="e.g. पीलिया के लक्षण · மஞ்சள் காமாலை அறிகுறிகள்")
+    options = [None, *[code for code in LANGUAGE_NAMES if code in LANG_SCRIPT]]
+    lang_choice = l_col.selectbox("Language", options,
+                                  format_func=lambda c: "Auto-detect" if c is None else language_label(c))
+
+    check_key = os.getenv("SERPAPI_API_KEY")
+    check_client = SerpClient(check_key, CACHE_DIR)
+    lang_q, note = resolve_language(question, lang_choice) if question.strip() else (None, None)
+    if note:
+        (st.warning if lang_q is None else st.info)(note)
+    cost = check_cost(check_client, question.strip(), lang_q) if lang_q else 0
+    label = "Check (free, already cached)" if lang_q and cost == 0 else f"Check ({cost or 2} credits)"
+    if cost and not check_key:
+        st.caption("Add SERPAPI_API_KEY to .env to run new checks.")
+
+    if st.button(label, type="primary", disabled=not lang_q or (cost > 0 and not check_key)):
+        try:
+            with st.spinner("Asking Google…"):
+                result = check_question(check_client, question, lang_q)
+            save_check(result)
+            st.session_state["last_check"] = (result["question"], result["lang"])
+        except (SerpApiError, CacheMiss) as e:
+            st.error(str(e))
+
+    english_benchmark = cells.loc[cells["lang"] == "en", "coverage"].mean() if "en" in langs else None
+    history = load_checks()
+    if history:
+        last = st.session_state.get("last_check")
+        idx = next((i for i, c in enumerate(history) if (c["question"], c["lang"]) == last), 0)
+        pick = st.selectbox(
+            "Checked questions", range(len(history)), index=idx,
+            format_func=lambda i: f"{history[i]['verdict']} · {language_label(history[i]['lang'])} · {history[i]['question']}",
+        )
+        render_check(history[pick], english_benchmark)
 
 # ---------------------------------------------------------------- languages
 with tab_lang:
@@ -237,23 +337,11 @@ with tab_drill:
         m4.metric("Gap", f"{r.gap:.0f}")
 
         st.markdown(f"**What people type** after *{raw['seed']}* (Google Autocomplete, `hl={lang}`):")
-        chips = "".join(
-            f'<span class="qchip{"" if s["native"] else " off"}">{html.escape(s["text"])}</span>'
-            for s in raw["suggestions"]
-        ) or "<em>No suggestions</em>"
-        st.markdown(chips, unsafe_allow_html=True)
-        st.caption("Struck-through suggestions are not in the target language.")
+        suggestion_chips(raw["suggestions"])
 
         for serp in raw["serps"]:
             st.markdown(f"#### Google results for *{serp['query']}*  ·  coverage {serp['coverage']:.0f}")
-            df = results[(results["topic"] == topic) & (results["lang"] == lang) & (results["query"] == serp["query"])]
-            st.dataframe(
-                df[["position", "title", "domain", "detected_lang", "native", "machine_translated", "tier", "link"]],
-                hide_index=True, width="stretch",
-                column_config={"link": st.column_config.LinkColumn("link", display_text="open"),
-                               "native": st.column_config.CheckboxColumn("in language"),
-                               "machine_translated": st.column_config.CheckboxColumn("Google Translate")},
-            )
+            results_table(serp["results"])
             if serp["related_questions"]:
                 st.caption("People also ask: " + " · ".join(serp["related_questions"]))
 

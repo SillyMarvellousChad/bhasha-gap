@@ -287,3 +287,86 @@ def test_serpapi_error_in_one_cell_does_not_stop_the_run(tmp_path):
     data = collect(DOMAIN, Flaky("fake", tmp_path))
     assert [c["lang"] for c in data["cells"]] == ["hi"]
     assert data["skipped"] == ["dengue:en"] and "boom" in data["errors"][0]
+
+
+# ------------------------------------------------------------ check any question
+from bhasha_gap.check import check_cost, check_question, load_checks, resolve_language, save_check, verdict
+
+
+@pytest.mark.parametrize("question, choice, lang, has_note", [
+    ("மஞ்சள் காமாலை அறிகுறிகள்", None, "ta", False),
+    ("पीलिया के लक्षण क्या है", None, "hi", False),
+    ("कावीळ म्हणजे काय", None, "mr", False),
+    ("पीलिया", None, "hi", True),          # ambiguous Devanagari: defaults to Hindi, explains
+    ("জণ্ডিচৰ লক্ষণ", None, "as", False),
+    ("জন্ডিসের লক্ষণ", None, "bn", False),
+    ("jaundice symptoms", None, "en", False),
+    ("piliya ke lakshan kya hai", None, "en", True),  # romanised Hindi: warns
+    ("पीलिया", "mr", "mr", False),          # the user's pick wins
+    ("12345 ???", None, None, True),
+])
+def test_resolve_language(question, choice, lang, has_note):
+    got, note = resolve_language(question, choice)
+    assert got == lang and bool(note) == has_note
+
+
+def test_check_question_and_cost(tmp_path):
+    client = FakeClient("fake", tmp_path)
+    r = check_question(client, "  डेंगू के लक्षण  ", "hi")
+    assert r["question"] == "डेंगू के लक्षण"
+    assert r["serp"]["n_results"] == 2 and r["verdict"] == verdict(r["serp"]["coverage"])
+    assert check_cost(SerpClient(None, tmp_path / "empty"), "x", "hi") == 2
+
+
+def test_verdict_thresholds():
+    assert [verdict(v) for v in (90, 75, 50, 39.9)] == ["Well served", "Well served", "Partly served", "Poorly served"]
+
+
+def test_check_history_keeps_latest_per_question(tmp_path):
+    path = tmp_path / "checks.json"
+    assert load_checks(path) == []
+    save_check({"question": "a", "lang": "hi", "v": 1}, path)
+    save_check({"question": "b", "lang": "hi", "v": 1}, path)
+    save_check({"question": "a", "lang": "hi", "v": 2}, path)
+    assert [(c["question"], c["v"]) for c in load_checks(path)] == [("a", 2), ("b", 1)]
+
+
+@pytest.mark.parametrize("text, expected", [
+    ("fever meaning in hindi", True),
+    ("fever in hindi", True),
+    ("बुखार in english", True),
+    ("thyroid ka matlab", True),
+    ("fever symptoms", False),
+    ("बुखार के लक्षण", False),
+])
+def test_seeks_translation(text, expected):
+    from bhasha_gap.langdetect import seeks_translation
+    assert seeks_translation(text) == expected
+
+
+def test_translation_requests_are_not_measured_as_questions(tmp_path):
+    class Fever(FakeClient):
+        def search(self, params):
+            if params["engine"] == "google_autocomplete" and params["hl"] == "en":
+                return {"suggestions": [{"value": "dengue meaning in hindi"}, {"value": "dengue symptoms"}]}
+            return super().search(params)
+
+    data = collect({**DOMAIN, "languages": ["en"]}, Fever("fake", tmp_path))
+    assert data["cells"][0]["serps"][0]["query"] == "dengue symptoms"
+
+
+@pytest.mark.parametrize("text, seed, expected", [
+    ("ସ୍ବଭାବ", "ଡେଙ୍ଗୁ", False),          # Odia Autocomplete junk ("nature")
+    ("ਤਬੀਲਿਸੀ", "ਟੀਬੀ", False),            # "Tbilisi" for TB
+    ("ডেঙ্গুর লক্ষণ", "ডেংগু", True),        # spelling variant of the seed
+    ("उच्च रक्तचाप के लक्षण", "उच्च रक्तचाप", True),
+    ("diabetes symptoms", "diabetes", True),
+])
+def test_on_topic(text, seed, expected):
+    from bhasha_gap.scoring import on_topic
+    assert on_topic(text, seed) == expected
+
+
+def test_off_topic_suggestions_are_not_demand_or_queries():
+    d = assess_suggestions(["ଡେଙ୍ଗୁ symptoms", "ସ୍ବଭାବ", "ଭାନିଜି"], "ଡେଙ୍ଗୁ", "or")
+    assert d["demand_raw"] == 0 and d["off_topic_count"] == 2

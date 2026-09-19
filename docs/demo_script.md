@@ -23,7 +23,14 @@ Fill every **[bracket]** from the **What the search data shows** panel after the
 >
 > "Switch to *Machine-translated*. This purple is Google filling the gap with Google Translate proxies of **[sources]**. They're readable, but nobody checked the medical accuracy."
 
-### 1:30–2:10 · Drill down: a real question
+### 1:30–2:10 · Check a question live
+*On screen: Check a question tab. Type a question in an Indian language and click Check.*
+
+> "Anyone can test this. I'll type **[question]** in **[language]**. Bhasha Gap detects the language, asks Google, and scores what comes back: **[verdict]**, **[N]** results in the language, **[M]** trustworthy."
+
+*(Pick a question that was checked earlier, so it loads instantly from the cache. Or use Drill down on the biggest-gap cell to show the real Autocomplete questions.)*
+
+### (optional) Drill down: a real question
 *On screen: Drill down tab, on the biggest-gap cell.*
 
 > "These chips are what people really type after **[seed]**. They come straight from Autocomplete. Struck-out ones aren't in the language. **[Mention the Hindi/Marathi detection if it's visible.]** Below that are the actual Google results for that question: language, source type, and whether each is a machine translation."

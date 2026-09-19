@@ -8,9 +8,10 @@ Gap    = high demand x low supply.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from difflib import SequenceMatcher
 
 from .authority import classify, domain_of, unwrap_translation
-from .langdetect import detect, is_romanized_indic, matches_language
+from .langdetect import detect, is_romanized_indic, matches_language, seeks_translation
 
 # Google usually shows 7-10 organic results on page one. Dividing by at least
 # this many means a SERP with only 2 results, both native, is not scored 100%.
@@ -94,6 +95,21 @@ def coverage_score(a: dict) -> float:
     return round(100 * sum(COVERAGE_WEIGHTS[k] * v for k, v in parts.items()), 1)
 
 
+# Autocomplete in low-resource languages sometimes returns unrelated words
+# (Odia ଡେଙ୍ଗୁ -> ସ୍ବଭାବ "nature"; Punjabi ਟੀਬੀ -> ਤਬੀਲਿਸੀ "Tbilisi"). A suggestion is
+# on topic if it contains the seed or its first word is a close spelling of it.
+ON_TOPIC_MIN_SIMILARITY = 0.6
+
+
+def on_topic(text: str, seed: str) -> bool:
+    text, seed = text.strip().lower(), seed.strip().lower()
+    if not text or not seed:
+        return False
+    if seed in text:
+        return True
+    return SequenceMatcher(None, text.split()[0], seed.split()[0]).ratio() >= ON_TOPIC_MIN_SIMILARITY
+
+
 def assess_suggestions(suggestions: list[str], seed: str, lang: str) -> dict:
     """Classify Autocomplete suggestions: what people actually type.
 
@@ -105,9 +121,11 @@ def assess_suggestions(suggestions: list[str], seed: str, lang: str) -> dict:
     rows = [
         {
             "text": s,
-            "native": matches_language(s, lang),
+            "native": matches_language(s, lang) and on_topic(s, seed),
+            "on_topic": on_topic(s, seed),
             "confident": detect(s).lang == lang,
             "romanized": is_romanized_indic(s),  # in English cells this is Hinglish demand
+            "seeks_translation": seeks_translation(s),
         }
         for s in suggestions
         if s.strip().lower() != seed_norm
@@ -115,6 +133,7 @@ def assess_suggestions(suggestions: list[str], seed: str, lang: str) -> dict:
     return {
         "suggestions": rows,
         "demand_raw": sum(r["native"] for r in rows),
+        "off_topic_count": sum(not r["on_topic"] for r in rows),
         "romanized_count": sum(r["romanized"] for r in rows),
     }
 

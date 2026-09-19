@@ -56,8 +56,12 @@ def collect_cell(client: SerpClient, topic: dict, lang: str, searches_per_cell: 
     suggestions = [s["value"] for s in ac.get("suggestions", []) if s.get("value")]
     demand = assess_suggestions(suggestions, seed, lang)
     hl_fallback = bool(ac.get("hl_fallback"))
-    # Search the questions we are surest are in `lang` first.
-    native = sorted((s for s in demand["suggestions"] if s["native"]), key=lambda s: not s["confident"])
+    # Search real questions (not "... meaning in hindi" translation requests),
+    # the ones we are surest are in `lang` first.
+    native = sorted(
+        (s for s in demand["suggestions"] if s["native"]),
+        key=lambda s: (s.get("seeks_translation", False), not s["confident"]),
+    )
     native_questions = [s["text"] for s in native]
     queries = native_questions[:searches_per_cell] or [seed]
 

@@ -130,18 +130,33 @@ def key_findings(data: dict, cells: pd.DataFrame, results: pd.DataFrame) -> list
             "text": f"of {language_label(top)} results are Google Translate copies of English pages ({sources}).",
         })
 
-    # 4. Hinglish: Hindi demand typed in Roman script, hidden inside English.
+    # 4. Hidden demand: Indian-language demand inside English Autocomplete,
+    # either typed in Roman script or asking for a translation.
     en_cells = [c for c in data["cells"] if c["lang"] == "en"]
     en_sugg = [s for c in en_cells for s in c["suggestions"]]
-    hinglish = [s["text"] for s in en_sugg if s.get("romanized")]
-    if hinglish:
+    hidden = [s["text"] for s in en_sugg if s.get("romanized") or s.get("seeks_translation")]
+    if hidden:
+        examples = sorted(hidden, key=lambda t: "in hindi" not in t.lower())[:2]
         findings.append({
             "label": "Hidden demand",
-            "value": f"{len(hinglish)}/{len(en_sugg)}",
-            "text": f"English Autocomplete suggestions are Hindi typed in Roman script, e.g. \"{hinglish[0]}\".",
+            "value": f"{len(hidden)}/{len(en_sugg)}",
+            "text": "English Autocomplete suggestions are really people looking for an Indian language, e.g. "
+                    + ", ".join(f"\"{t}\"" for t in examples) + ".",
         })
 
-    # 5. The single worst cell, with a real question.
+    # 5. Autocomplete has nothing on-topic to suggest: Google barely knows the language.
+    silent = indic_cells.assign(silent=indic_cells["demand_raw"] <= 1).groupby("lang")["silent"].mean()
+    if not silent.empty and silent.max() >= 0.3:
+        lang = silent.idxmax()
+        n_topics = int((indic_cells["lang"] == lang).sum())
+        findings.append({
+            "label": "Autocomplete is silent",
+            "value": f"{round(silent[lang] * n_topics)}/{n_topics}",
+            "text": f"health topics get at most one related Autocomplete suggestion in {language_label(lang)}. "
+                    "Google has too little search data in the language to suggest anything.",
+        })
+
+    # 6. The single worst cell, with a real question.
     if not indic_cells.empty:
         w = indic_cells.sort_values("gap", ascending=False).iloc[0]
         findings.append({

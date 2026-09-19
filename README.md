@@ -18,6 +18,8 @@ The output is a **topic × language heatmap**. Red cells are questions people as
 
 The **Write next** list turns this into a content backlog for health departments, NGOs, journalists and creators.
 
+**Check a question.** Type any health question in any of the 9 languages. Bhasha Gap detects the language and measures that one question live: 2 SerpApi credits, or free if it's cached.
+
 > Search is used as a *measurement instrument*, not a content pipe. There is no LLM, and every number traces back to a SERP.
 
 Track: **Knowledge & Public Interest** · SerpApi India Hackathon 2026
@@ -82,6 +84,7 @@ seed term per language ──► Google Autocomplete (hl=xx, gl=in) ──► re
 | `bhasha_gap/scoring.py` | Native share, trusted-native count, coverage and gap scores |
 | `bhasha_gap/collect.py` | Pipeline and CLI |
 | `bhasha_gap/analysis.py` | DataFrames and the auto-computed key findings |
+| `bhasha_gap/check.py` | The live "Check a question" measurement and its history |
 | `domains/health.json` | 15 health topics, seed terms in 9 languages |
 | `domains/government_schemes.json` | 12 welfare schemes and civic documents (Ayushman card, PM-KISAN, ration card …), 9 languages |
 | `app.py` | Streamlit dashboard |
