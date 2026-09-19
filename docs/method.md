@@ -8,7 +8,9 @@ For each topic, a native-language seed term (for example `मधुमेह`, `
 **2. Supply: what Google returns.**
 The top native suggestions, or the seed itself if there are none, are searched with SerpApi's **Google Search** engine (`google_domain=google.co.in`, `gl=in`, `hl=<language>`). For each organic result we record:
 
-- **Language.** Unicode script detection on the title and snippet. Hindi and Marathi share Devanagari, so they are split with marker words (`है/के/में` vs `आहे/आणि/मध्ये`), the Marathi genitive `-च्या` and the letter `ळ`.
+- **Language.** Unicode script detection on the title and snippet. Two scripts are shared:
+  - **Devanagari** (Hindi and Marathi) is split with marker words (`है/के/में` vs `आहे/आणि/मध्ये`), Marathi postpositions glued to nouns (`-च्या`, `-साठी`, `-मध्ये`) and the letter `ळ`.
+  - **Bengali script** (Bengali and Assamese) is split by how *ra* is written: Assamese uses `ৰ`/`ৱ`, Bengali uses `র`.
 - **Authority tier.** official (gov.in, nic.in, WHO …), medical (hospitals, Mayo Clinic …), reference, news, unknown, or user-generated (YouTube, Quora …).
 - **Machine translation.** Google often fills Indian-language results with Google Translate proxies of English pages. These are tagged `machine_translated`, attributed to the original site, and count as half a native result. They are never counted as trusted, because nobody has reviewed the translation.
 - **People also ask.** Whether Google's related-questions block exists in the language.
@@ -21,6 +23,8 @@ The top native suggestions, or the seed itself if there are none, are searched w
 | Coverage (0–100) | 45% native share + 40% min(trusted native results ÷ 3, 1) + 15% native "People also ask" |
 | Gap (0–100) | demand × (100 − coverage) ÷ 100 |
 
-A *trusted* result has authority ≥ 0.8 (official or medical). **English is the control column.** It shows what "well served" looks like for the same topics.
+A *trusted* result has authority ≥ 0.8 (official or medical), and it is not a machine translation.
+
+**Hidden demand.** English Autocomplete often returns Hindi typed in Roman script ("diabetes ke lakshan"). These suggestions are flagged as romanised. They are people searching in Hindi who have given up on the script. **English is the control column.** It shows what "well served" looks like for the same topics.
 
 **Limitations.** One snapshot, one location (`gl=in`). Autocomplete volume is a relative proxy, not absolute search counts. Script detection can't tell romanised Hindi from English. The authority list is hand-curated and editable in `bhasha_gap/authority.py`. Seed translations should be checked by native speakers.

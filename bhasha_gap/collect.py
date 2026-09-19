@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Callable
 
 from .scoring import assess_serp, assess_suggestions, coverage_score
-from .serp import CacheMiss, SerpClient
+from .serp import BudgetExhausted, CacheMiss, SerpClient
 
 ProgressFn = Callable[[int, int, str], None]
 
@@ -85,11 +85,16 @@ def collect(
 ) -> dict:
     cells = plan_cells(domain, langs, max_topics)
     results, skipped = [], []
+    budget_hit = False
     for i, (topic, lang) in enumerate(cells, start=1):
         if progress:
             progress(i, len(cells), f"{topic['label']} · {lang}")
         try:
             results.append(collect_cell(client, topic, lang, searches_per_cell))
+        except BudgetExhausted:
+            # Keep going: later cells may still be fully cached.
+            budget_hit = True
+            skipped.append(f"{topic['id']}:{lang}")
         except CacheMiss:
             skipped.append(f"{topic['id']}:{lang}")
 
@@ -101,6 +106,7 @@ def collect(
         "searches_per_cell": searches_per_cell,
         "cells": results,
         "skipped": skipped,
+        "budget_hit": budget_hit,
     }
 
 
@@ -126,6 +132,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out", help="Output JSON (default: data/results/<domain>.json)")
     p.add_argument("--cache", default="data/cache")
     p.add_argument("--offline", action="store_true", help="Use only cached responses; never spend credits")
+    p.add_argument("--max-credits", type=int, help="Hard cap on live SerpApi calls for this run")
     p.add_argument("--yes", action="store_true", help="Skip the credit confirmation prompt")
     args = p.parse_args(argv)
 
@@ -134,11 +141,14 @@ def main(argv: list[str] | None = None) -> int:
 
     domain = load_domain(args.domain)
     langs = args.langs.split(",") if args.langs else None
-    client = SerpClient(os.getenv("SERPAPI_API_KEY"), args.cache, offline=args.offline)
+    client = SerpClient(os.getenv("SERPAPI_API_KEY"), args.cache, offline=args.offline,
+                        max_live_calls=args.max_credits)
     cells = plan_cells(domain, langs, args.topics)
     est = estimate_credits(client, cells, args.searches_per_cell)
 
     print(f"{est['cells']} cells, up to {est['max_credits']} SerpApi credits (cached queries are free).")
+    if args.max_credits is not None:
+        print(f"Credit cap for this run: {args.max_credits}")
     if not client.offline:
         left = client.searches_left()
         if left is not None:
@@ -158,7 +168,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"\nSaved {len(data['cells'])} cells to {out}")
     print(f"Live SerpApi calls: {client.live_calls}, cache hits: {client.cache_hits}")
     if data["skipped"]:
-        print(f"Skipped (not cached): {', '.join(data['skipped'])}")
+        reason = "credit cap reached / not cached" if data["budget_hit"] else "not cached"
+        print(f"Skipped ({reason}): {', '.join(data['skipped'])}")
+        print("Re-run later: finished cells come from the cache for free.")
     return 0
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import os
 from pathlib import Path
 
@@ -11,7 +12,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from bhasha_gap import LANGUAGE_NAMES, language_label
-from bhasha_gap.analysis import cells_frame, language_summary, load_results, pivot, results_frame
+from bhasha_gap.analysis import cells_frame, key_findings, language_summary, load_results, pivot, results_frame
 from bhasha_gap.collect import collect, estimate_credits, load_domain, plan_cells, save_results
 from bhasha_gap.serp import SerpApiError, SerpClient
 
@@ -30,8 +31,11 @@ METRICS = {
     "gap": ("Information gap", "High demand in this language, poorly answered", "Reds"),
     "coverage": ("Supply: coverage score", "How well Google serves a native reader (0–100)", "RdYlGn"),
     "native_share": ("Native-language share", "Share of top results written in the query language", "RdYlGn"),
+    "trust": ("Trust", "Trustworthy (official/medical) results in the language; 3 or more = 100", "RdYlGn"),
+    "mt_share": ("Machine-translated", "Share of top results that are Google Translate copies of other pages", "Purples"),
     "demand": ("Demand", "Native-script Autocomplete suggestions, normalised", "Blues"),
 }
+PERCENT_METRICS = {"native_share", "mt_share"}
 
 st.markdown(
     """
@@ -42,6 +46,11 @@ st.markdown(
       .qchip {display:inline-block; padding:.2rem .6rem; margin:.15rem; border-radius:999px;
               border:1px solid rgba(128,128,128,.35); font-size:.92rem;}
       .qchip.off {opacity:.45; text-decoration: line-through;}
+      .finding {border:1px solid rgba(128,128,128,.25); border-left:4px solid #c8553d; border-radius:8px;
+                padding:.7rem .9rem; height:100%;}
+      .finding .label {font-size:.75rem; text-transform:uppercase; letter-spacing:.06em; opacity:.7;}
+      .finding .value {font-size:1.9rem; font-weight:700; line-height:1.2;}
+      .finding .text {font-size:.9rem; opacity:.9;}
     </style>
     """,
     unsafe_allow_html=True,
@@ -59,8 +68,10 @@ def sidebar_collection() -> None:
         per_cell = st.slider("Google searches per cell", 1, 3, 1,
                              help="How many of the top native Autocomplete questions to search.")
         api_key = os.getenv("SERPAPI_API_KEY") or st.text_input("SerpApi key", type="password")
+        max_credits = st.number_input("Credit cap for this run", 0, 5000, 50, step=10,
+                                      help="The run stops spending once it reaches this many live searches.")
 
-        client = SerpClient(api_key, CACHE_DIR)
+        client = SerpClient(api_key, CACHE_DIR, max_live_calls=int(max_credits))
         cells = plan_cells(domain, langs, max_topics)
         est = estimate_credits(client, cells, per_cell)
         st.caption(f"{est['cells']} cells · up to **{est['max_credits']}** credits (cached queries are free)")
@@ -77,6 +88,8 @@ def sidebar_collection() -> None:
                 return
             save_results(data, RESULTS_DIR / f"{domain['id']}.json")
             st.success(f"{client.live_calls} live calls, {client.cache_hits} from cache.")
+            if data["skipped"]:
+                st.warning(f"{len(data['skipped'])} cells skipped (credit cap). Run again later to finish them.")
             st.rerun()
 
 
@@ -121,13 +134,20 @@ for col, lang in zip(cols, langs):
                help="Average share of top Google results written in this language")
 st.caption("**Native-language share** of page-one results for the questions people actually ask, per language.")
 
-if indic:
-    worst = cells[cells["lang"] != "en"].sort_values("gap", ascending=False).iloc[0]
-    st.markdown(
-        f"> Biggest gap: people search **{worst['topic'].lower()}** in **{language_label(worst['lang'])}** "
-        f"(e.g. *{worst['queries'].split(' | ')[0]}*), but only **{worst['native_share'] * 100:.0f}%** "
-        f"of the top results are in that language, with **{worst['trusted_native']:.0f}** from trusted sources."
-    )
+findings = key_findings(data, cells, results)
+if findings:
+    st.markdown("#### What the search data shows")
+    for row_start in range(0, len(findings), 3):
+        for col, f in zip(st.columns(3), findings[row_start:row_start + 3]):
+            col.markdown(
+                f'<div class="finding"><div class="label">{html.escape(f["label"])}</div>'
+                f'<div class="value">{html.escape(f["value"])}</div>'
+                f'<div class="text">{html.escape(f["text"])}</div></div>',
+                unsafe_allow_html=True,
+            )
+    st.write("")
+if data.get("skipped"):
+    st.caption(f"{len(data['skipped'])} cells not collected yet (credit cap). They are excluded above.")
 
 tab_map, tab_lang, tab_drill, tab_write, tab_method = st.tabs(
     ["Gap map", "Languages & sources", "Drill down", "Write next", "Method"]
@@ -138,9 +158,10 @@ with tab_map:
     metric = st.radio("Show", list(METRICS), format_func=lambda m: METRICS[m][0], horizontal=True)
     title, subtitle, scale = METRICS[metric]
     table = pivot(cells, metric, langs)
-    if metric == "native_share":
+    if metric in PERCENT_METRICS:
         table = table * 100
-    table = table.loc[table.mean(axis=1).sort_values(ascending=metric != "gap").index]
+    worst_first = metric in {"gap", "mt_share"}
+    table = table.loc[table.mean(axis=1).sort_values(ascending=not worst_first).index]
     fig = go.Figure(go.Heatmap(
         z=table.values,
         x=[language_label(lang) for lang in table.columns],
@@ -215,7 +236,8 @@ with tab_drill:
 
         st.markdown(f"**What people type** after *{raw['seed']}* (Google Autocomplete, `hl={lang}`):")
         chips = "".join(
-            f'<span class="qchip{"" if s["native"] else " off"}">{s["text"]}</span>' for s in raw["suggestions"]
+            f'<span class="qchip{"" if s["native"] else " off"}">{html.escape(s["text"])}</span>'
+            for s in raw["suggestions"]
         ) or "<em>No suggestions</em>"
         st.markdown(chips, unsafe_allow_html=True)
         st.caption("Struck-through suggestions are not in the target language.")
@@ -240,7 +262,7 @@ with tab_write:
                "Useful for health departments, NGOs, journalists and creators.")
     todo = (cells[cells["lang"] != "en"].sort_values("gap", ascending=False)
             .assign(language=lambda d: d["lang"].map(language_label))
-            [["topic", "language", "queries", "gap", "coverage", "native_share", "trusted_native"]])
+            [["topic", "language", "queries", "gap", "coverage", "native_share", "trusted_native", "mt_share"]])
     st.dataframe(
         todo, hide_index=True, width="stretch",
         column_config={
@@ -249,6 +271,7 @@ with tab_write:
             "coverage": st.column_config.NumberColumn("Coverage", format="%.0f"),
             "native_share": st.column_config.NumberColumn("Native share", format="percent"),
             "trusted_native": st.column_config.NumberColumn("Trusted native", format="%.0f"),
+            "mt_share": st.column_config.NumberColumn("Google Translate", format="percent"),
         },
     )
     st.download_button("Download CSV", todo.to_csv(index=False).encode("utf-8-sig"),

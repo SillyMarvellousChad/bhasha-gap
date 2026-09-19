@@ -31,9 +31,20 @@ class SerpApiError(RuntimeError):
     pass
 
 
+class BudgetExhausted(CacheMiss):
+    """The run's credit cap is reached. Treated like a cache miss: stop spending."""
+
+
 class SerpClient:
-    def __init__(self, api_key: str | None, cache_dir: str | Path = "data/cache", offline: bool = False):
+    def __init__(
+        self,
+        api_key: str | None,
+        cache_dir: str | Path = "data/cache",
+        offline: bool = False,
+        max_live_calls: int | None = None,
+    ):
         self.api_key = api_key
+        self.max_live_calls = max_live_calls
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.offline = offline or not api_key
@@ -55,6 +66,8 @@ class SerpClient:
             return json.loads(path.read_text(encoding="utf-8"))
         if self.offline:
             raise CacheMiss(f"Not cached and running offline: {params}")
+        if self.max_live_calls is not None and self.live_calls >= self.max_live_calls:
+            raise BudgetExhausted(f"Credit cap of {self.max_live_calls} reached")
 
         resp = requests.get(SEARCH_URL, params={**params, "api_key": self.api_key}, timeout=90)
         data = resp.json()

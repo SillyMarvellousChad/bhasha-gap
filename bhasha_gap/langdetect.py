@@ -2,8 +2,9 @@
 
 Search result titles and snippets are short, so statistical detectors are
 unreliable on them. Instead we rely on Unicode script blocks (which cleanly
-separate most Indian languages) and add a marker-word pass to split the two
-big Devanagari languages, Hindi and Marathi.
+separate most Indian languages) and add a second pass for the two scripts
+shared by more than one language: Devanagari (Hindi, Marathi) and Bengali
+(Bengali, Assamese).
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ LANG_SCRIPT: dict[str, str] = {
     "hi": "Devanagari",
     "mr": "Devanagari",
     "bn": "Bengali",
+    "as": "Bengali",
     "ta": "Tamil",
     "te": "Telugu",
     "kn": "Kannada",
@@ -37,8 +39,8 @@ LANG_SCRIPT: dict[str, str] = {
     "or": "Oriya",
 }
 
-# Only languages whose script is unique to them. Devanagari is shared by
-# Hindi and Marathi, so it is resolved separately.
+# Only languages whose script is unique to them. Shared scripts are resolved
+# by the functions in _SHARED_SCRIPT_RESOLVERS.
 _SCRIPT_TO_LANG = {
     script: lang
     for lang, script in LANG_SCRIPT.items()
@@ -120,23 +122,39 @@ def devanagari_lang(text: str) -> str | None:
     return None
 
 
+def bengali_script_lang(text: str) -> str | None:
+    """Split Bengali-script text into Bengali or Assamese.
+
+    Assamese writes "ra" as ৰ and has ৱ; Bengali writes "ra" as র. Any word
+    with an r sound therefore settles it.
+    """
+    if "ৰ" in text or "ৱ" in text:
+        return "as"
+    if "র" in text:
+        return "bn"
+    return None
+
+
+_SHARED_SCRIPT_RESOLVERS = {"Devanagari": devanagari_lang, "Bengali": bengali_script_lang}
+
+
 def detect(text: str) -> Detection:
     script = dominant_script(text)
     if script is None:
         return Detection(None, None)
     if script == "Latin":
         return Detection(script, "en")
-    if script == "Devanagari":
-        return Detection(script, devanagari_lang(text))
+    if script in _SHARED_SCRIPT_RESOLVERS:
+        return Detection(script, _SHARED_SCRIPT_RESOLVERS[script](text))
     return Detection(script, _SCRIPT_TO_LANG.get(script))
 
 
 def matches_language(text: str, lang: str) -> bool:
     """True if `text` is written in `lang`.
 
-    Ambiguous Devanagari counts as a match for both Hindi and Marathi. Short
-    titles often carry no marker words, and penalising them would inflate the
-    measured gap.
+    Ambiguous text in a shared script (e.g. Devanagari with no marker words)
+    counts as a match for every language using that script. Penalising short
+    titles would inflate the measured gap.
     """
     expected = LANG_SCRIPT.get(lang)
     if expected is None:

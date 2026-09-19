@@ -1,0 +1,30 @@
+{
+  "id": "government_schemes",
+  "name": "Government schemes & documents",
+  "description": "Welfare schemes and civic documents people need to apply for, check or update.",
+  "languages": [
+    "en",
+    "hi",
+    "bn",
+    "mr",
+    "ta",
+    "te",
+    "as",
+    "or",
+    "pa"
+  ],
+  "topics": [
+    {"id": "ayushman", "label": "Ayushman Bharat card", "seeds": {"en": "ayushman card", "hi": "आयुष्मान कार्ड", "bn": "আয়ুষ্মান কার্ড", "mr": "आयुष्मान कार्ड", "ta": "ஆயுஷ்மான் கார்டு", "te": "ఆయుష్మాన్ కార్డు", "as": "আয়ুষ্মান কাৰ্ড", "or": "ଆୟୁଷ୍ମାନ କାର୍ଡ", "pa": "ਆਯੁਸ਼ਮਾਨ ਕਾਰਡ"}},
+    {"id": "pm_kisan", "label": "PM-KISAN", "seeds": {"en": "pm kisan", "hi": "पीएम किसान", "bn": "পিএম কিষাণ", "mr": "पीएम किसान", "ta": "பிஎம் கிசான்", "te": "పీఎం కిసాన్", "as": "পিএম কিষাণ", "or": "ପିଏମ କିଷାନ", "pa": "ਪੀਐਮ ਕਿਸਾਨ"}},
+    {"id": "ration_card", "label": "Ration card", "seeds": {"en": "ration card", "hi": "राशन कार्ड", "bn": "রেশন কার্ড", "mr": "रेशन कार्ड", "ta": "ரேஷன் கார்டு", "te": "రేషన్ కార్డు", "as": "ৰেচন কাৰ্ড", "or": "ରାସନ କାର୍ଡ", "pa": "ਰਾਸ਼ਨ ਕਾਰਡ"}},
+    {"id": "old_age_pension", "label": "Old-age pension", "seeds": {"en": "old age pension", "hi": "वृद्धावस्था पेंशन", "bn": "বার্ধক্য ভাতা", "mr": "वृद्धापकाळ पेन्शन", "ta": "முதியோர் ஓய்வூதியம்", "te": "వృద్ధాప్య పింఛన్", "as": "বাৰ্ধক্য পেঞ্চন", "or": "ବାର୍ଦ୍ଧକ୍ୟ ଭତ୍ତା", "pa": "ਬੁਢਾਪਾ ਪੈਨਸ਼ਨ"}},
+    {"id": "scholarship", "label": "Scholarship", "seeds": {"en": "scholarship", "hi": "छात्रवृत्ति", "bn": "স্কলারশিপ", "mr": "शिष्यवृत्ती", "ta": "கல்வி உதவித்தொகை", "te": "ఉపకార వేతనం", "as": "স্কলাৰশ্বিপ", "or": "ଛାତ୍ରବୃତ୍ତି", "pa": "ਵਜ਼ੀਫ਼ਾ"}},
+    {"id": "pmay", "label": "PM Awas Yojana (housing)", "seeds": {"en": "pm awas yojana", "hi": "प्रधानमंत्री आवास योजना", "bn": "আবাস যোজনা", "mr": "प्रधानमंत्री आवास योजना", "ta": "பிரதமர் வீட்டு வசதி திட்டம்", "te": "ప్రధాన మంత్రి ఆవాస్ యోజన", "as": "প্ৰধানমন্ত্ৰী আবাস যোজনা", "or": "ପ୍ରଧାନମନ୍ତ୍ରୀ ଆବାସ ଯୋଜନା", "pa": "ਪ੍ਰਧਾਨ ਮੰਤਰੀ ਆਵਾਸ ਯੋਜਨਾ"}},
+    {"id": "mgnrega", "label": "MGNREGA job card", "seeds": {"en": "nrega job card", "hi": "नरेगा जॉब कार्ड", "bn": "১০০ দিনের কাজ", "mr": "रोजगार हमी योजना", "ta": "100 நாள் வேலை திட்டம்", "te": "ఉపాధి హామీ పథకం", "as": "জব কাৰ্ড", "or": "ମନରେଗା", "pa": "ਮਨਰੇਗਾ"}},
+    {"id": "aadhaar_update", "label": "Aadhaar update", "seeds": {"en": "aadhaar update", "hi": "आधार अपडेट", "bn": "আধার আপডেট", "mr": "आधार अपडेट", "ta": "ஆதார் அப்டேட்", "te": "ఆధార్ అప్డేట్", "as": "আধাৰ আপডেট", "or": "ଆଧାର ଅପଡେଟ", "pa": "ਆਧਾਰ ਅਪਡੇਟ"}},
+    {"id": "birth_certificate", "label": "Birth certificate", "seeds": {"en": "birth certificate", "hi": "जन्म प्रमाण पत्र", "bn": "জন্ম সার্টিফিকেট", "mr": "जन्म दाखला", "ta": "பிறப்பு சான்றிதழ்", "te": "జనన ధృవీకరణ పత్రం", "as": "জন্ম প্ৰমাণপত্ৰ", "or": "ଜନ୍ମ ପ୍ରମାଣପତ୍ର", "pa": "ਜਨਮ ਸਰਟੀਫਿਕੇਟ"}},
+    {"id": "caste_certificate", "label": "Caste certificate", "seeds": {"en": "caste certificate", "hi": "जाति प्रमाण पत्र", "bn": "কাস্ট সার্টিফিকেট", "mr": "जातीचा दाखला", "ta": "சாதி சான்றிதழ்", "te": "కుల ధృవీకరణ పత్రం", "as": "জাতিৰ প্ৰমাণপত্ৰ", "or": "ଜାତି ପ୍ରମାଣପତ୍ର", "pa": "ਜਾਤੀ ਸਰਟੀਫਿਕੇਟ"}},
+    {"id": "ujjwala", "label": "Ujjwala gas connection", "seeds": {"en": "ujjwala yojana", "hi": "उज्ज्वला योजना", "bn": "উজ্জ্বলা যোজনা", "mr": "उज्ज्वला योजना", "ta": "உஜ்வாலா திட்டம்", "te": "ఉజ్వల యోజన", "as": "উজ্জ্বলা যোজনা", "or": "ଉଜ୍ଜ୍ୱଳା ଯୋଜନା", "pa": "ਉੱਜਵਲਾ ਯੋਜਨਾ"}},
+    {"id": "voter_id", "label": "Voter ID card", "seeds": {"en": "voter id card", "hi": "वोटर आईडी कार्ड", "bn": "ভোটার কার্ড", "mr": "मतदान कार्ड", "ta": "வாக்காளர் அடையாள அட்டை", "te": "ఓటర్ ఐడి కార్డు", "as": "ভোটাৰ কাৰ্ড", "or": "ଭୋଟର କାର୍ଡ", "pa": "ਵੋਟਰ ਕਾਰਡ"}}
+  ]
+}

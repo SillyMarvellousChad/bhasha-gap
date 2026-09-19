@@ -107,7 +107,7 @@ def assess_suggestions(suggestions: list[str], seed: str, lang: str) -> dict:
             "text": s,
             "native": matches_language(s, lang),
             "confident": detect(s).lang == lang,
-            "romanized": lang != "en" and is_romanized_indic(s),
+            "romanized": is_romanized_indic(s),  # in English cells this is Hinglish demand
         }
         for s in suggestions
         if s.strip().lower() != seed_norm

@@ -188,3 +188,62 @@ def test_machine_translated_counts_half_and_is_not_trusted():
 
 def test_hospital_domains_are_medical():
     assert classify("https://www.carehospitals.com/ta/blog")[0] == "medical"
+
+
+# ------------------------------------------------------------ more languages, budget, findings
+@pytest.mark.parametrize("text, lang", [
+    ("উচ্চ ৰক্তচাপৰ লক্ষণ", "as"),
+    ("উচ্চ রক্তচাপের লক্ষণ", "bn"),
+    ("ଉଚ୍ଚ ରକ୍ତଚାପର ଲକ୍ଷଣ", "or"),
+    ("ਹਾਈ ਬਲੱਡ ਪ੍ਰੈਸ਼ਰ ਦੇ ਲੱਛਣ", "pa"),
+])
+def test_more_languages(text, lang):
+    assert detect(text).lang == lang
+    assert matches_language(text, lang)
+
+
+def test_bengali_is_not_assamese():
+    assert not matches_language("উচ্চ রক্তচাপের লক্ষণ", "as")
+    assert not matches_language("উচ্চ ৰক্তচাপৰ লক্ষণ", "bn")
+
+
+def test_all_domain_seeds_are_in_their_language():
+    from pathlib import Path
+    from bhasha_gap.collect import load_domain
+    for path in Path("domains").glob("*.json"):
+        d = load_domain(path)
+        for t in d["topics"]:
+            assert set(d["languages"]) <= set(t["seeds"]), (path, t["id"])
+            for lang, seed in t["seeds"].items():
+                assert matches_language(seed, lang), (path.name, t["id"], lang, seed)
+
+
+def test_credit_cap_stops_spending_and_skips(tmp_path):
+    class Counting(FakeClient):
+        def search(self, params):
+            if self.max_live_calls is not None and self.live_calls >= self.max_live_calls:
+                from bhasha_gap.serp import BudgetExhausted
+                raise BudgetExhausted("cap")
+            return super().search(params)
+
+    client = Counting("fake", tmp_path, max_live_calls=2)
+    data = collect(DOMAIN, client)
+    assert client.live_calls == 2
+    assert [c["lang"] for c in data["cells"]] == ["en"]
+    assert data["skipped"] == ["dengue:hi"] and data["budget_hit"]
+
+
+def test_real_client_enforces_cap_before_network(tmp_path, monkeypatch):
+    from bhasha_gap import serp as serp_mod
+    monkeypatch.setattr(serp_mod.requests, "get", lambda *a, **k: pytest.fail("network call past cap"))
+    client = SerpClient("key", tmp_path, max_live_calls=0)
+    with pytest.raises(serp_mod.BudgetExhausted):
+        client.autocomplete("x", "hi")
+
+
+def test_key_findings_only_report_what_the_data_shows(tmp_path):
+    from bhasha_gap.analysis import key_findings
+    data = collect(DOMAIN, FakeClient("fake", tmp_path))
+    labels = {f["label"] for f in key_findings(data, cells_frame(data), results_frame(data))}
+    assert {"Language gap", "Trust gap", "Biggest gap"} <= labels
+    assert "Machine-translated" not in labels  # the fake SERPs contain no Google Translate links

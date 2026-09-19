@@ -4,6 +4,7 @@ LANGUAGE_NAMES = {
     "en": ("English", "English"),
     "hi": ("Hindi", "हिन्दी"),
     "bn": ("Bengali", "বাংলা"),
+    "as": ("Assamese", "অসমীয়া"),
     "mr": ("Marathi", "मराठी"),
     "ta": ("Tamil", "தமிழ்"),
     "te": ("Telugu", "తెలుగు"),
