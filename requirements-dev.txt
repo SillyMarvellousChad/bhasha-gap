@@ -1,0 +1,4 @@
+-r requirements.txt
+pytest>=8.0
+# Only for scripts/screenshots.py (uses your installed Chrome)
+playwright>=1.45

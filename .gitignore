@@ -1,7 +1,17 @@
+# Secrets
 .env
+
+# Python
 __pycache__/
 *.pyc
 .pytest_cache/
 .venv/
 venv/
+
+# Raw SerpApi responses: large, and full of third-party page text.
+# Regenerate with `python -m bhasha_gap.collect` (results are committed).
+data/cache/
+data/*.log
+
+# Local tooling
 .claude/

@@ -1,0 +1,357 @@
+[
+ {
+  "question": "पीलिया के लक्षण",
+  "lang": "hi",
+  "checked_at": "2026-09-19T18:34:42+00:00",
+  "hl_fallback": false,
+  "verdict": "Poorly served",
+  "suggestions": [
+   {
+    "text": "पीलिया के लक्षण इलाज",
+    "native": true,
+    "on_topic": true,
+    "confident": true,
+    "romanized": false,
+    "seeks_translation": false
+   },
+   {
+    "text": "पीलिया के लक्षण और बचाव",
+    "native": true,
+    "on_topic": true,
+    "confident": true,
+    "romanized": false,
+    "seeks_translation": false
+   },
+   {
+    "text": "पीलिया के लक्षण बच्चों में",
+    "native": true,
+    "on_topic": true,
+    "confident": true,
+    "romanized": false,
+    "seeks_translation": false
+   },
+   {
+    "text": "पीलिया के लक्षण हिंदी",
+    "native": true,
+    "on_topic": true,
+    "confident": true,
+    "romanized": false,
+    "seeks_translation": false
+   },
+   {
+    "text": "पीलिया के लक्षण क्या-क्या होते हैं",
+    "native": true,
+    "on_topic": true,
+    "confident": true,
+    "romanized": false,
+    "seeks_translation": false
+   },
+   {
+    "text": "पीलिया के लक्षण in english",
+    "native": true,
+    "on_topic": true,
+    "confident": true,
+    "romanized": false,
+    "seeks_translation": true
+   },
+   {
+    "text": "पीलिया के लक्षण और उपचार",
+    "native": true,
+    "on_topic": true,
+    "confident": true,
+    "romanized": false,
+    "seeks_translation": false
+   },
+   {
+    "text": "पीलिया के लक्षण कैसे होते हैं",
+    "native": true,
+    "on_topic": true,
+    "confident": true,
+    "romanized": false,
+    "seeks_translation": false
+   },
+   {
+    "text": "पीलिया के लक्षण इलाज कैसे करें",
+    "native": true,
+    "on_topic": true,
+    "confident": true,
+    "romanized": false,
+    "seeks_translation": false
+   },
+   {
+    "text": "पीलिया के लक्षण कैसे पता करें",
+    "native": true,
+    "on_topic": true,
+    "confident": true,
+    "romanized": false,
+    "seeks_translation": false
+   },
+   {
+    "text": "पीलिया के लक्षण और उपाय",
+    "native": true,
+    "on_topic": true,
+    "confident": true,
+    "romanized": false,
+    "seeks_translation": false
+   },
+   {
+    "text": "पीलिया के लक्षण new born baby",
+    "native": true,
+    "on_topic": true,
+    "confident": true,
+    "romanized": false,
+    "seeks_translation": false
+   }
+  ],
+  "demand_raw": 12,
+  "off_topic_count": 0,
+  "romanized_count": 0,
+  "serp": {
+   "results": [
+    {
+     "position": 1,
+     "title": "कुष्ठ रोग - लक्षण, निदान, और इलाज | Manipal Hospitals",
+     "link": "https://www.youtube.com/watch?v=LfXP5nzKYx0",
+     "domain": "youtube.com",
+     "machine_translated": false,
+     "script": "Devanagari",
+     "detected_lang": "hi",
+     "native": true,
+     "tier": "ugc",
+     "authority": 0.2
+    },
+    {
+     "position": 2,
+     "title": "जानें एंथ्रेक्स के लक्षण? #shorts #pashupalan ...",
+     "link": "https://www.youtube.com/shorts/71tQWj1EMX0",
+     "domain": "youtube.com",
+     "machine_translated": false,
+     "script": "Devanagari",
+     "detected_lang": "hi",
+     "native": true,
+     "tier": "ugc",
+     "authority": 0.2
+    },
+    {
+     "position": 3,
+     "title": "संत कौन है संतों का लक्षण क्या है || Shri Ram Katha",
+     "link": "https://www.youtube.com/watch?v=-yid9FKuTag",
+     "domain": "youtube.com",
+     "machine_translated": false,
+     "script": "Devanagari",
+     "detected_lang": "hi",
+     "native": true,
+     "tier": "ugc",
+     "authority": 0.2
+    },
+    {
+     "position": 4,
+     "title": "मनुष्य में कौन - कौन से लक्षण होने चाहिए ? By Sant Shri ...",
+     "link": "https://www.youtube.com/watch?v=saZvx5VlU3M",
+     "domain": "youtube.com",
+     "machine_translated": false,
+     "script": "Latin",
+     "detected_lang": "en",
+     "native": false,
+     "tier": "ugc",
+     "authority": 0.2
+    },
+    {
+     "position": 5,
+     "title": "पीरियड्स के 24वें दिन से ये लक्षण रोज़ दिखने लगे तो pregnancy ...",
+     "link": "https://www.youtube.com/shorts/YgfDBvh-s_0",
+     "domain": "youtube.com",
+     "machine_translated": false,
+     "script": "Devanagari",
+     "detected_lang": "hi",
+     "native": true,
+     "tier": "ugc",
+     "authority": 0.2
+    },
+    {
+     "position": 6,
+     "title": "आलू में पिछेती झुलसा रोग की लक्षण | Late Blight of Patato",
+     "link": "https://www.youtube.com/shorts/8CpySK85PmM",
+     "domain": "youtube.com",
+     "machine_translated": false,
+     "script": "Devanagari",
+     "detected_lang": "hi",
+     "native": true,
+     "tier": "ugc",
+     "authority": 0.2
+    },
+    {
+     "position": 7,
+     "title": "डेंगू के लक्षण पहचानें और सावधान रहें!",
+     "link": "https://www.facebook.com/MoHFWIndia/videos/%E0%A4%A1%E0%A5%87%E0%A4%82%E0%A4%97%E0%A5%82-%E0%A4%95%E0%A5%87-%E0%A4%B2%E0%A4%95%E0%A5%8D%E0%A4%B7%E0%A4%A3-%E0%A4%AA%E0%A4%B9%E0%A4%9A%E0%A4%BE%E0%A4%A8%E0%A5%87%E0%A4%82-%E0%A4%94%E0%A4%B0-%E0%A4%B8%E0%A4%BE%E0%A4%B5%E0%A4%A7%E0%A4%BE%E0%A4%A8-%E0%A4%B0%E0%A4%B9%E0%A5%87%E0%A4%82/774984517857371/",
+     "domain": "facebook.com",
+     "machine_translated": false,
+     "script": "Devanagari",
+     "detected_lang": "hi",
+     "native": true,
+     "tier": "ugc",
+     "authority": 0.2
+    },
+    {
+     "position": 8,
+     "title": "लक्षण - MSD Manual Consumer Version",
+     "link": "https://www.msdmanuals.com/hi/home/symptoms",
+     "domain": "msdmanuals.com",
+     "machine_translated": false,
+     "script": "Devanagari",
+     "detected_lang": "hi",
+     "native": true,
+     "tier": "medical",
+     "authority": 0.8
+    },
+    {
+     "position": 9,
+     "title": "लेबर पेन के लक्षण और हॉस्पिटल जाने का सही समय",
+     "link": "https://www.youtube.com/watch?v=kbvBnFqibKM",
+     "domain": "youtube.com",
+     "machine_translated": false,
+     "script": "Devanagari",
+     "detected_lang": "hi",
+     "native": true,
+     "tier": "ugc",
+     "authority": 0.2
+    }
+   ],
+   "n_results": 9,
+   "native_count": 8,
+   "machine_translated": 0,
+   "native_share": 0.8888888888888888,
+   "trusted_native": 1,
+   "authority_mean": 0.2666666666666667,
+   "related_questions": [],
+   "related_native": 0,
+   "has_knowledge_graph": false,
+   "has_ai_overview": true,
+   "total_results": 35,
+   "coverage": 53.3
+  }
+ },
+ {
+  "question": "ଉଚ୍ଚ ରକ୍ତଚାପ",
+  "lang": "or",
+  "checked_at": "2026-09-19T17:56:23+00:00",
+  "hl_fallback": false,
+  "verdict": "Partly served",
+  "suggestions": [],
+  "demand_raw": 0,
+  "off_topic_count": 0,
+  "romanized_count": 0,
+  "serp": {
+   "results": [
+    {
+     "position": 1,
+     "title": "ଉଚ୍ଚ ରକ୍ତଚାପ - ଉଇକିପିଡ଼ିଆ",
+     "link": "https://or.wikipedia.org/wiki/%E0%AC%89%E0%AC%9A%E0%AD%8D%E0%AC%9A_%E0%AC%B0%E0%AC%95%E0%AD%8D%E0%AC%A4%E0%AC%9A%E0%AC%BE%E0%AC%AA",
+     "domain": "or.wikipedia.org",
+     "machine_translated": false,
+     "script": "Oriya",
+     "detected_lang": "or",
+     "native": true,
+     "tier": "reference",
+     "authority": 0.6
+    },
+    {
+     "position": 2,
+     "title": "ଉଚ୍ଚ ରକ୍ତଚାପ ନିୟନ୍ତ୍ରଣ କରିବାକୁ ଖାଦ୍ୟରେ ସାମିଲ କରନ୍ତୁ ଏହିସବୁ ଜିନିଷ",
+     "link": "https://kanaknews.com/five-healthy-foods-to-control-high-blood-pressure-lak/",
+     "domain": "kanaknews.com",
+     "machine_translated": false,
+     "script": "Oriya",
+     "detected_lang": "or",
+     "native": true,
+     "tier": "unknown",
+     "authority": 0.35
+    },
+    {
+     "position": 3,
+     "title": "ମଧ୍ୟମ ଧରଣର ଉଚ୍ଚ ରକ୍ତଚାପ ଚିକିତ୍ସା",
+     "link": "https://or.wikipedia.org/wiki/%E0%AC%89%E0%AC%87%E0%AC%95%E0%AC%BF%E0%AC%AA%E0%AC%BF%E0%AC%A1%E0%AC%BC%E0%AC%BF%E0%AC%86:%E0%AC%AD%E0%AC%BF%E0%AC%A1%E0%AC%BF%E0%AC%93%E0%AD%B1%E0%AC%BF%E0%AC%95%E0%AC%BF/%E0%AC%89%E0%AC%9A%E0%AD%8D%E0%AC%9A_%E0%AC%B0%E0%AC%95%E0%AD%8D%E0%AC%A4%E0%AC%9A%E0%AC%BE%E0%AC%AA",
+     "domain": "or.wikipedia.org",
+     "machine_translated": false,
+     "script": "Oriya",
+     "detected_lang": "or",
+     "native": true,
+     "tier": "reference",
+     "authority": 0.6
+    },
+    {
+     "position": 4,
+     "title": "ଉଚ୍ଚ ରକ୍ତଚାପ ନିୟନ୍ତ୍ରିତ କରେ ଲାଉ ଜୁସ୍‌",
+     "link": "https://www.dharitri.com/%E0%AC%89%E0%AC%9A%E0%AD%8D%E0%AC%9A-%E0%AC%B0%E0%AC%95%E0%AD%8D%E0%AC%A4%E0%AC%9A%E0%AC%BE%E0%AC%AA-%E0%AC%A8%E0%AC%BF%E0%AD%9F%E0%AC%A8%E0%AD%8D%E0%AC%A4%E0%AD%8D%E0%AC%B0%E0%AC%BF%E0%AC%A4-2/",
+     "domain": "dharitri.com",
+     "machine_translated": false,
+     "script": "Oriya",
+     "detected_lang": "or",
+     "native": true,
+     "tier": "unknown",
+     "authority": 0.35
+    },
+    {
+     "position": 5,
+     "title": "ଉଚ୍ଚ ରକ୍ତଚାପ | Vikaspedia - Health",
+     "link": "https://health.vikaspedia.in/viewcontent/health/roga/b09b1ab4db1a-b30b15b4db24b1ab3eb2a?lgn=or",
+     "domain": "health.vikaspedia.in",
+     "machine_translated": false,
+     "script": "Oriya",
+     "detected_lang": "or",
+     "native": true,
+     "tier": "reference",
+     "authority": 0.6
+    },
+    {
+     "position": 6,
+     "title": "ଛୋଟ ଛୁଆଙ୍କ ଠାରେ କାହିଁକି ଦେଖାଯାଉଛି ଉଚ୍ଚ ରକ୍ତଚାପ ସମସ୍ୟା # ...",
+     "link": "https://www.facebook.com/swasthyasambad/videos/%E0%AC%9B%E0%AD%8B%E0%AC%9F-%E0%AC%9B%E0%AD%81%E0%AC%86%E0%AC%99%E0%AD%8D%E0%AC%95-%E0%AC%A0%E0%AC%BE%E0%AC%B0%E0%AD%87-%E0%AC%95%E0%AC%BE%E0%AC%B9%E0%AC%BF%E0%AC%81%E0%AC%95%E0%AC%BF-%E0%AC%A6%E0%AD%87%E0%AC%96%E0%AC%BE%E0%AC%AF%E0%AC%BE%E0%AC%89%E0%AC%9B%E0%AC%BF-%E0%AC%89%E0%AC%9A%E0%AD%8D%E0%AC%9A-%E0%AC%B0%E0%AC%95%E0%AD%8D%E0%AC%A4%E0%AC%9A%E0%AC%BE%E0%AC%AA-%E0%AC%B8%E0%AC%AE%E0%AC%B8%E0%AD%8D%E0%AD%9F%E0%AC%BE-swasthyasambad-healthylivi/1078151588127815/",
+     "domain": "facebook.com",
+     "machine_translated": false,
+     "script": "Oriya",
+     "detected_lang": "or",
+     "native": true,
+     "tier": "ugc",
+     "authority": 0.2
+    },
+    {
+     "position": 7,
+     "title": "ଉଚ୍ଚ ରକ୍ତଚାପ ନିୟନ୍ତ୍ରଣ କରିବାରେ ସାହାଯ୍ୟ କରିବ ଏହିସବୁ ପରିବା",
+     "link": "https://moodisha.com/%E0%AC%89%E0%AC%9A%E0%AD%8D%E0%AC%9A-%E0%AC%B0%E0%AC%95%E0%AD%8D%E0%AC%A4%E0%AC%9A%E0%AC%BE%E0%AC%AA-%E0%AC%A8%E0%AC%BF%E0%AD%9F%E0%AC%A8%E0%AD%8D%E0%AC%A4%E0%AD%8D%E0%AC%B0%E0%AC%A3-%E0%AC%95/",
+     "domain": "moodisha.com",
+     "machine_translated": false,
+     "script": "Oriya",
+     "detected_lang": "or",
+     "native": true,
+     "tier": "unknown",
+     "authority": 0.35
+    },
+    {
+     "position": 8,
+     "title": "ଉଚ୍ଚ ରକ୍ତଚାପ କିପରି ହୃଦଘାତର କାରଣ ହୋଇପାରେ ? ଜାଣନ୍ତୁ",
+     "link": "https://www.etvbharat.com/or/health/does-high-blood-pressure-cause-heart-attack-or-stroke-ors26091803007",
+     "domain": "etvbharat.com",
+     "machine_translated": false,
+     "script": "Oriya",
+     "detected_lang": "or",
+     "native": true,
+     "tier": "news",
+     "authority": 0.5
+    }
+   ],
+   "n_results": 8,
+   "native_count": 8,
+   "machine_translated": 0,
+   "native_share": 1.0,
+   "trusted_native": 0,
+   "authority_mean": 0.44375,
+   "related_questions": [],
+   "related_native": 0,
+   "has_knowledge_graph": false,
+   "has_ai_overview": false,
+   "total_results": 104,
+   "coverage": 45.0
+  }
+ }
+]

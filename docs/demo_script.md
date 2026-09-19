@@ -1,54 +1,50 @@
 # Demo video script (under 3 minutes)
 
-Fill every **[bracket]** from the **What the search data shows** panel after the full run. Never use a number the dashboard doesn't show.
+Every number below comes from the committed dataset (collected 19 Sep 2026). If you re-collect, read the numbers off the dashboard instead.
 
-**Setup:** screen recording at 1080p with browser zoom around 110%. Hide the sidebar. Load the dataset you'll present, then close any other tabs. Rehearse twice and keep it under 2:50.
+**Setup:** screen recording at 1080p, browser zoom around 110%. Start the app with `Start Bhasha Gap.bat` and close other tabs. Before recording, check your live-demo question once so it loads instantly and for free from the cache. Rehearse twice and keep it under 2:50.
 
 ---
 
 ### 0:00–0:20 · Hook
-*On screen: the dashboard hero and the findings panel.*
+*On screen: the top of the page (nameplate and headline).*
 
-> "If you search for diabetes symptoms in Hindi, **[X]%** of what Google shows you is a machine translation of an American website. Only **[Y]%** comes from a source you'd trust. Bhasha Gap measures that gap, across **[N]** Indian languages, using nothing but search data."
+> "If you ask Google a health question in Assamese, only 7 in 100 answers are trustworthy pages you can actually read. In English, it's 62. Bhasha Gap measures that gap across 9 Indian languages, using only real Google search data."
 
-### 0:20–0:45 · The idea
-*On screen: the Method tab, or a simple two-box diagram.*
+### 0:20–0:45 · How it works
+*On screen: scroll to "Method in brief".*
 
-> "Two SerpApi engines, one question. **Google Autocomplete**, in each language, tells us what people actually type: that's demand. **Google Search**, with the same questions, tells us what they're served: that's supply. The gap between the two is the information inequality."
+> "Two SerpApi engines. Google Autocomplete, in each language, shows the questions people really type: that's demand. Google Search, with those exact questions from India, shows what they're served: that's supply. Then every result is graded: is it in their language, is it from a trusted source, or is it a Google Translate copy of a foreign page?"
 
-### 0:45–1:30 · The map
-*On screen: Gap map tab. Switch between Information gap → Trust → Machine-translated.*
+### 0:45–1:15 · One search, up close
+*On screen: scroll to "One search, up close". Click one title so the real page opens, then come back.*
 
-> "Topics down the side, languages across the top. English is the control. Red means lots of people ask and few good answers exist in their language. **[Point at the darkest cell]**: people ask **[question]**, and the web gives them **[result]**."
->
-> "Switch to *Machine-translated*. This purple is Google filling the gap with Google Translate proxies of **[sources]**. They're readable, but nobody checked the medical accuracy."
+> "Here's a real Assamese search about dengue. Every result Google returned is in Bengali, a different language. None of the 7 are trustworthy pages in Assamese. The same question in English gets 6."
 
-### 1:30–2:10 · Check a question live
-*On screen: Check a question tab. Type a question in an Indian language and click Check.*
+### 1:15–1:45 · The scorecard and the findings
+*On screen: the language scorecard, then "By the numbers".*
 
-> "Anyone can test this. I'll type **[question]** in **[language]**. Bhasha Gap detects the language, asks Google, and scores what comes back: **[verdict]**, **[N]** results in the language, **[M]** trustworthy."
+> "Telugu and Tamil do reasonably well. Hindi drops to 30%, because a quarter of its results are Google Translate copies of American and Australian health sites. Odia and Assamese are at the bottom. For Odia, Google barely suggests anything related at all: 8 of 10 health topics."
 
-*(Pick a question that was checked earlier, so it loads instantly from the cache. Or use Drill down on the biggest-gap cell to show the real Autocomplete questions.)*
+### 1:45–2:20 · Check a question, live
+*On screen: Explore → Check a question. Type a question in an Indian language and click Check.*
 
-### (optional) Drill down: a real question
-*On screen: Drill down tab, on the biggest-gap cell.*
+> "Anyone can test this. I'll type 'पीलिया के लक्षण', jaundice symptoms in Hindi. Bhasha Gap detects the language, asks Google, and grades the answers: [read the verdict and the reliable-answers number off the screen]."
 
-> "These chips are what people really type after **[seed]**. They come straight from Autocomplete. Struck-out ones aren't in the language. **[Mention the Hindi/Marathi detection if it's visible.]** Below that are the actual Google results for that question: language, source type, and whether each is a machine translation."
+### 2:20–2:40 · Why it matters
+*On screen: Explore → What to write next. Click Download CSV.*
 
-### 2:10–2:35 · Why it matters
-*On screen: Write next tab. Click Download CSV.*
+> "This becomes a to-do list: real questions people ask, ranked by how badly they're answered, per language. A health department or NGO can take this CSV and know exactly what to write next, and in which language."
 
-> "This turns into a to-do list. The real questions people ask, ranked by how badly they're answered, per language. A health department, an NGO or a creator can take this CSV and know exactly what to write next, and in which language."
+### 2:40–2:50 · Close
+*On screen: back to the headline.*
 
-### 2:35–2:50 · Close
-*On screen: back to the findings panel.*
-
-> "Every number here comes from a SerpApi response. There's no LLM and nothing made up. Bhasha Gap: search data as a measuring instrument for India's languages."
+> "Every number here comes from a SerpApi response. There's no AI-generated content. Bhasha Gap: search data as a measuring instrument for India's languages."
 
 ---
 
-**Recording checklist**
-- [ ] Full run finished, and the findings panel shows real numbers
-- [ ] Every bracket filled from the dashboard
-- [ ] Uploaded as YouTube *unlisted* (or a Drive link set to "anyone with the link")
-- [ ] Opened in an incognito window to confirm it plays without login
+**Checklist**
+- [ ] Live-demo question checked once beforehand, so it's free and instant
+- [ ] Uploaded to YouTube as *Unlisted*, or a Drive link set to "Anyone with the link"
+- [ ] Opened in an incognito window to confirm it plays without signing in
+- [ ] Under 3 minutes
