@@ -1,0 +1,11 @@
+[project]
+name = "bhasha-gap"
+version = "1.0.0"
+description = "Mapping India's language information gap with SerpApi search data"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+
+[tool.pytest.ini_options]
+# Let `pytest` (not only `python -m pytest`) import the bhasha_gap package from the repo root.
+pythonpath = ["."]
+testpaths = ["tests"]
