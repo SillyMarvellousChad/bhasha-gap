@@ -24,7 +24,7 @@ CACHE_DIR = Path("data/cache")
 
 TIER_COLORS = {
     "official": "#1b7f5a", "medical": "#4fa37f", "reference": "#8fb9a8",
-    "news": "#d9a441", "unknown": "#b7b7b7", "ugc": "#c8553d",
+    "news": "#d9a441", "machine_translated": "#8a6fb5", "unknown": "#b7b7b7", "ugc": "#c8553d",
 }
 METRICS = {
     "gap": ("Information gap", "High demand in this language, poorly answered", "Reds"),
@@ -224,10 +224,11 @@ with tab_drill:
             st.markdown(f"#### Google results for *{serp['query']}*  ·  coverage {serp['coverage']:.0f}")
             df = results[(results["topic"] == topic) & (results["lang"] == lang) & (results["query"] == serp["query"])]
             st.dataframe(
-                df[["position", "title", "domain", "detected_lang", "native", "tier", "link"]],
+                df[["position", "title", "domain", "detected_lang", "native", "machine_translated", "tier", "link"]],
                 hide_index=True, width="stretch",
                 column_config={"link": st.column_config.LinkColumn("link", display_text="open"),
-                               "native": st.column_config.CheckboxColumn("in language")},
+                               "native": st.column_config.CheckboxColumn("in language"),
+                               "machine_translated": st.column_config.CheckboxColumn("Google Translate")},
             )
             if serp["related_questions"]:
                 st.caption("People also ask: " + " · ".join(serp["related_questions"]))

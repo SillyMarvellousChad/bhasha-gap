@@ -52,7 +52,10 @@ _HINDI_MARKERS = {
 _MARATHI_MARKERS = {
     "आहे", "आहेत", "आणि", "मध्ये", "साठी", "काय", "कसे", "कशी", "होतो",
     "करा", "नाही", "हे", "व", "या", "कोणते", "कसा", "असते", "असतो",
+    "म्हणजे", "लक्षणे", "कारणे", "उपचारांसाठी",
 }
+# Suffixes glued onto Marathi nouns: मधुमेहाच्या, मधुमेहींसाठी, शरीरामध्ये.
+_MARATHI_SUFFIXES = ("च्या", "साठी", "मध्ये")
 _DEVANAGARI_WORD = re.compile(r"[ऀ-ॿ]+")
 
 # Common words in Hindi typed in Latin script ("sugar ka ilaj kya hai").
@@ -102,12 +105,13 @@ def devanagari_lang(text: str) -> str | None:
     """Split Devanagari text into Hindi or Marathi using marker words.
 
     The retroflex ळ is frequent in Marathi and almost absent from Hindi, and
-    the genitive suffix -च्या is distinctly Marathi, so both count as evidence.
+    postpositions glued to nouns (-च्या, -साठी, -मध्ये) are distinctly Marathi,
+    so both count as evidence.
     """
     words = _DEVANAGARI_WORD.findall(text)
     hi = sum(w in _HINDI_MARKERS for w in words)
     mr = sum(w in _MARATHI_MARKERS for w in words)
-    mr += sum(w.endswith("च्या") and w != "च्या" for w in words)
+    mr += sum(w.endswith(_MARATHI_SUFFIXES) and w not in _MARATHI_SUFFIXES for w in words)
     mr += text.count("ळ")
     if hi > mr:
         return "hi"

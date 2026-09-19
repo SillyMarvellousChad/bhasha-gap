@@ -1,7 +1,7 @@
 import pytest
 
 from bhasha_gap.analysis import cells_frame, language_summary, results_frame
-from bhasha_gap.authority import classify
+from bhasha_gap.authority import classify, unwrap_translation
 from bhasha_gap.collect import collect, estimate_credits, plan_cells
 from bhasha_gap.langdetect import Detection, detect, is_romanized_indic, matches_language
 from bhasha_gap.scoring import assess_serp, assess_suggestions, coverage_score, gap_score
@@ -149,3 +149,42 @@ def test_estimate_credits(tmp_path):
     client = SerpClient(None, tmp_path)
     cells = plan_cells(DOMAIN)
     assert estimate_credits(client, cells, 2) == {"cells": 2, "max_credits": 6}
+
+
+# ------------------------------------------------------------ findings from the first live run
+def test_marathi_suffix_suggestion_is_not_hindi():
+    assert detect("मधुमेहींसाठी").lang == "mr"
+    assert not matches_language("मधुमेहींसाठी", "hi")
+
+
+def test_confident_hindi_question_is_searched_before_ambiguous_one():
+    d = assess_suggestions(["मधुमेह", "मधुमेह आहार", "मधुमेह के लक्षण"], "मधुमेह", "hi")
+    ranked = sorted((s for s in d["suggestions"] if s["native"]), key=lambda s: not s["confident"])
+    assert ranked[0]["text"] == "मधुमेह के लक्षण"
+
+
+@pytest.mark.parametrize("url, original", [
+    ("https://translate.google.com/translate?u=https://www.mayoclinic.org/x&hl=hi&sl=en&tl=hi",
+     "https://www.mayoclinic.org/x"),
+    ("https://www-mayoclinic-org.translate.goog/x?_x_tr_sl=en&_x_tr_tl=hi", "https://www.mayoclinic.org/x"),
+    ("https://my--site-example-com.translate.goog/p", "https://my-site.example.com/p"),
+    ("https://www.mayoclinic.org/x", None),
+])
+def test_unwrap_translation(url, original):
+    assert unwrap_translation(url) == original
+
+
+def test_machine_translated_counts_half_and_is_not_trusted():
+    a = assess_serp(serp(
+        ("उच्च रक्तचाप के लक्षण", "https://translate.google.com/translate?u=https://www.mayoclinic.org/x&tl=hi"),
+        ("उच्च रक्तचाप के लक्षण", "https://www.fortishealthcare.com/y"),
+    ), "hi")
+    assert a["results"][0]["domain"] == "mayoclinic.org"
+    assert a["results"][0]["tier"] == "machine_translated"
+    assert a["machine_translated"] == 1 and a["native_count"] == 1
+    assert a["native_share"] == pytest.approx(1.5 / 8)
+    assert a["trusted_native"] == 1
+
+
+def test_hospital_domains_are_medical():
+    assert classify("https://www.carehospitals.com/ta/blog")[0] == "medical"

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 
-from .authority import classify, domain_of
+from .authority import classify, domain_of, unwrap_translation
 from .langdetect import detect, is_romanized_indic, matches_language
 
 # Google usually shows 7-10 organic results on page one. Dividing by at least
@@ -18,6 +18,8 @@ EXPECTED_RESULTS = 8
 # A reader is well served once there are this many trustworthy native results.
 TRUSTED_TARGET = 3
 TRUSTED_MIN_WEIGHT = 0.8
+# A Google Translate proxy is readable but not native content: half credit.
+MACHINE_TRANSLATED_CREDIT = 0.5
 
 COVERAGE_WEIGHTS = {"native": 0.45, "trusted_native": 0.40, "native_paa": 0.15}
 
@@ -27,7 +29,8 @@ class ResultRow:
     position: int
     title: str
     link: str
-    domain: str
+    domain: str  # for machine translations, the original site
+    machine_translated: bool
     script: str | None
     detected_lang: str | None
     native: bool
@@ -41,13 +44,15 @@ def assess_serp(serp: dict, lang: str) -> dict:
     for i, r in enumerate(serp.get("organic_results", [])[:10], start=1):
         text = f"{r.get('title', '')} {r.get('snippet', '')}"
         link = r.get("link", "")
+        original = unwrap_translation(link)
         found = detect(text)
         tier, weight = classify(link)
         rows.append(ResultRow(
             position=r.get("position", i),
             title=r.get("title", ""),
             link=link,
-            domain=domain_of(link),
+            domain=domain_of(original or link),
+            machine_translated=original is not None,
             script=found.script,
             detected_lang=found.lang,
             native=matches_language(text, lang),
@@ -56,14 +61,17 @@ def assess_serp(serp: dict, lang: str) -> dict:
         ))
 
     related = [q.get("question", "") for q in serp.get("related_questions", []) if q.get("question")]
-    native_count = sum(r.native for r in rows)
+    native_count = sum(r.native and not r.machine_translated for r in rows)
+    mt_native = sum(r.native and r.machine_translated for r in rows)
     trusted_native = sum(r.native and r.authority >= TRUSTED_MIN_WEIGHT for r in rows)
+    native_credit = native_count + MACHINE_TRANSLATED_CREDIT * mt_native
 
     return {
         "results": [asdict(r) for r in rows],
         "n_results": len(rows),
         "native_count": native_count,
-        "native_share": native_count / max(len(rows), EXPECTED_RESULTS),
+        "machine_translated": mt_native,
+        "native_share": native_credit / max(len(rows), EXPECTED_RESULTS),
         "trusted_native": trusted_native,
         "authority_mean": sum(r.authority for r in rows) / len(rows) if rows else 0.0,
         "related_questions": related,
@@ -87,12 +95,18 @@ def coverage_score(a: dict) -> float:
 
 
 def assess_suggestions(suggestions: list[str], seed: str, lang: str) -> dict:
-    """Classify Autocomplete suggestions: what people actually type."""
+    """Classify Autocomplete suggestions: what people actually type.
+
+    `confident` marks suggestions positively identified as `lang`, not merely
+    in its script. Hindi and Marathi share seed words such as मधुमेह, so
+    Autocomplete for one often returns phrases in the other.
+    """
     seed_norm = seed.strip().lower()
     rows = [
         {
             "text": s,
             "native": matches_language(s, lang),
+            "confident": detect(s).lang == lang,
             "romanized": lang != "en" and is_romanized_indic(s),
         }
         for s in suggestions

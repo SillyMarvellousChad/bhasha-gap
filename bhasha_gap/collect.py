@@ -53,7 +53,9 @@ def estimate_credits(client: SerpClient, cells: list[tuple[dict, str]], searches
 def collect_cell(client: SerpClient, topic: dict, lang: str, searches_per_cell: int) -> dict:
     seed = topic["seeds"][lang]
     demand = assess_suggestions(client.autocomplete(seed, lang), seed, lang)
-    native_questions = [s["text"] for s in demand["suggestions"] if s["native"]]
+    # Search the questions we are surest are in `lang` first.
+    native = sorted((s for s in demand["suggestions"] if s["native"]), key=lambda s: not s["confident"])
+    native_questions = [s["text"] for s in native]
     queries = native_questions[:searches_per_cell] or [seed]
 
     serps = []

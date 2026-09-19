@@ -7,7 +7,7 @@ tier and a weight. The lists are intentionally transparent and easy to extend.
 
 from __future__ import annotations
 
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 # Suffixes that mark government, intergovernmental, or academic sites.
 OFFICIAL_SUFFIXES = (".gov.in", ".nic.in", ".gov", ".int", ".ac.in", ".edu", ".edu.in", ".res.in")
@@ -23,7 +23,9 @@ TIERS: dict[str, tuple[float, set[str]]] = {
         "apollohospitals.com", "apollo247.com", "maxhealthcare.in",
         "fortishealthcare.com", "manipalhospitals.com", "narayanahealth.org",
         "medanta.org", "practo.com", "1mg.com", "pharmeasy.in", "netmeds.com",
-        "myupchar.com", "kauveryhospital.com", "sriramakrishnahospital.com",
+        "myupchar.com", "heart.org", "sciencedirect.com", "thelancet.com",
+        "bmj.com", "nature.com", "lalpathlabs.com", "apolloclinic.com",
+        "relainstitute.com", "medicoverhospitals.in", "metropolisindia.com",
     }),
     "reference": (0.6, {"wikipedia.org", "britannica.com", "vikaspedia.in"}),
     "news": (0.5, {
@@ -48,11 +50,30 @@ TIERS: dict[str, tuple[float, set[str]]] = {
 }
 
 UNKNOWN_WEIGHT = 0.35
+# Google Translate proxies of (usually English) pages. They are readable, but
+# nobody has checked the medical accuracy of the translation.
+MACHINE_TRANSLATED = ("machine_translated", 0.5)
+# Hospital sites (carehospitals.com, yashodahospitals.com …) are too many to list.
+_HOSPITAL_KEYWORDS = ("hospital",)
 
 
 def domain_of(url: str) -> str:
     host = (urlparse(url).hostname or "").lower()
     return host[4:] if host.startswith("www.") else host
+
+
+def unwrap_translation(url: str) -> str | None:
+    """Original URL if `url` is a Google Translate proxy, else None."""
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    if host == "translate.google.com":
+        return parse_qs(parsed.query).get("u", [None])[0]
+    if host.endswith(".translate.goog"):
+        # www-mayoclinic-org.translate.goog -> www.mayoclinic.org ("--" encodes "-")
+        label = host.removesuffix(".translate.goog")
+        original = "-".join(part.replace("-", ".") for part in label.split("--"))
+        return parsed._replace(netloc=original, query="").geturl()
+    return None
 
 
 def _matches(host: str, domain: str) -> bool:
@@ -61,6 +82,8 @@ def _matches(host: str, domain: str) -> bool:
 
 def classify(url: str) -> tuple[str, float]:
     """Return (tier, weight) for a result URL."""
+    if unwrap_translation(url):
+        return MACHINE_TRANSLATED
     host = domain_of(url)
     if not host:
         return "unknown", UNKNOWN_WEIGHT
@@ -70,4 +93,6 @@ def classify(url: str) -> tuple[str, float]:
             return tier, weight
     if host.endswith(OFFICIAL_SUFFIXES):
         return "official", TIERS["official"][0]
+    if any(k in host for k in _HOSPITAL_KEYWORDS):
+        return "medical", TIERS["medical"][0]
     return "unknown", UNKNOWN_WEIGHT

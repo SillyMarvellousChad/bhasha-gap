@@ -10,13 +10,14 @@ The top native suggestions, or the seed itself if there are none, are searched w
 
 - **Language.** Unicode script detection on the title and snippet. Hindi and Marathi share Devanagari, so they are split with marker words (`है/के/में` vs `आहे/आणि/मध्ये`), the Marathi genitive `-च्या` and the letter `ळ`.
 - **Authority tier.** official (gov.in, nic.in, WHO …), medical (hospitals, Mayo Clinic …), reference, news, unknown, or user-generated (YouTube, Quora …).
+- **Machine translation.** Google often fills Indian-language results with Google Translate proxies of English pages. These are tagged `machine_translated`, attributed to the original site, and count as half a native result. They are never counted as trusted, because nobody has reviewed the translation.
 - **People also ask.** Whether Google's related-questions block exists in the language.
 
 **3. Scores.**
 
 | Score | Formula |
 |---|---|
-| Native share | native results ÷ max(results, 8) |
+| Native share | (native results + ½ × machine-translated results) ÷ max(results, 8) |
 | Coverage (0–100) | 45% native share + 40% min(trusted native results ÷ 3, 1) + 15% native "People also ask" |
 | Gap (0–100) | demand × (100 − coverage) ÷ 100 |
 
