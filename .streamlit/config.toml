@@ -4,3 +4,6 @@ font = "sans serif"
 
 [server]
 headless = true
+
+[client]
+toolbarMode = "minimal"

@@ -6,6 +6,7 @@ import html
 import os
 from pathlib import Path
 
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
@@ -124,7 +125,8 @@ st.sidebar.caption(f"Collected {data['collected_at']} · {len(cells)} cells · d
 # ---------------------------------------------------------------- headline
 baseline = summary.loc["en"] if "en" in summary.index else None
 indic = [lang for lang in langs if lang != "en"]
-cols = st.columns(len(langs))
+PER_ROW = 5
+cols = [c for start in range(0, len(langs), PER_ROW) for c in st.columns(PER_ROW)]
 for col, lang in zip(cols, langs):
     row = summary.loc[lang]
     delta = None
@@ -168,8 +170,8 @@ with tab_map:
         y=table.index,
         colorscale=scale,
         zmin=0, zmax=100,
-        text=table.round(0).values,
-        texttemplate="%{text:.0f}",
+        text=table.map(lambda v: "" if pd.isna(v) else f"{v:.0f}").values,  # blank = not collected yet
+        texttemplate="%{text}",
         hovertemplate="%{y} · %{x}<br>" + title + ": %{z:.1f}<extra></extra>",
         colorbar=dict(title=""),
     ))
