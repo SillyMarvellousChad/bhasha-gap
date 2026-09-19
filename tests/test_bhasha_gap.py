@@ -247,3 +247,43 @@ def test_key_findings_only_report_what_the_data_shows(tmp_path):
     labels = {f["label"] for f in key_findings(data, cells_frame(data), results_frame(data))}
     assert {"Language gap", "Trust gap", "Biggest gap"} <= labels
     assert "Machine-translated" not in labels  # the fake SERPs contain no Google Translate links
+
+
+def test_unsupported_hl_falls_back_and_caches(tmp_path, monkeypatch):
+    from bhasha_gap import serp as serp_mod
+    calls = []
+
+    class Resp:
+        def __init__(self, data):
+            self.data = data
+
+        def json(self):
+            return self.data
+
+    def fake_get(url, params, timeout):
+        calls.append(params)
+        if "hl" in params:
+            return Resp({"error": "Unsupported `as` interface language - hl parameter."})
+        return Resp({"suggestions": [{"value": "মধুমেহৰ লক্ষণ"}]})
+
+    monkeypatch.setattr(serp_mod.requests, "get", fake_get)
+    client = SerpClient("key", tmp_path)
+    data = client.search(client.autocomplete_params("মধুমেহ", "as"))
+    assert data["hl_fallback"] and data["suggestions"][0]["value"] == "মধুমেহৰ লক্ষণ"
+    assert "hl" not in calls[1] and client.live_calls == 2
+    client.search(client.autocomplete_params("মধুমেহ", "as"))  # second time: from cache
+    assert len(calls) == 2
+
+
+def test_serpapi_error_in_one_cell_does_not_stop_the_run(tmp_path):
+    from bhasha_gap.serp import SerpApiError
+
+    class Flaky(FakeClient):
+        def search(self, params):
+            if params["hl"] == "en":
+                raise SerpApiError("boom")
+            return super().search(params)
+
+    data = collect(DOMAIN, Flaky("fake", tmp_path))
+    assert [c["lang"] for c in data["cells"]] == ["hi"]
+    assert data["skipped"] == ["dengue:en"] and "boom" in data["errors"][0]

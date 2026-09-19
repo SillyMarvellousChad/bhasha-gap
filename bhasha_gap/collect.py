@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Callable
 
 from .scoring import assess_serp, assess_suggestions, coverage_score
-from .serp import BudgetExhausted, CacheMiss, SerpClient
+from .serp import BudgetExhausted, CacheMiss, SerpApiError, SerpClient
 
 ProgressFn = Callable[[int, int, str], None]
 
@@ -52,7 +52,10 @@ def estimate_credits(client: SerpClient, cells: list[tuple[dict, str]], searches
 
 def collect_cell(client: SerpClient, topic: dict, lang: str, searches_per_cell: int) -> dict:
     seed = topic["seeds"][lang]
-    demand = assess_suggestions(client.autocomplete(seed, lang), seed, lang)
+    ac = client.search(client.autocomplete_params(seed, lang))
+    suggestions = [s["value"] for s in ac.get("suggestions", []) if s.get("value")]
+    demand = assess_suggestions(suggestions, seed, lang)
+    hl_fallback = bool(ac.get("hl_fallback"))
     # Search the questions we are surest are in `lang` first.
     native = sorted((s for s in demand["suggestions"] if s["native"]), key=lambda s: not s["confident"])
     native_questions = [s["text"] for s in native]
@@ -60,7 +63,9 @@ def collect_cell(client: SerpClient, topic: dict, lang: str, searches_per_cell: 
 
     serps = []
     for q in queries:
-        a = assess_serp(client.google(q, lang), lang)
+        serp = client.google(q, lang)
+        hl_fallback |= bool(serp.get("hl_fallback"))
+        a = assess_serp(serp, lang)
         a["query"] = q
         a["coverage"] = coverage_score(a)
         serps.append(a)
@@ -70,6 +75,7 @@ def collect_cell(client: SerpClient, topic: dict, lang: str, searches_per_cell: 
         "topic": topic["label"],
         "lang": lang,
         "seed": seed,
+        "hl_fallback": hl_fallback,  # Google has no interface in this language
         **demand,
         "serps": serps,
     }
@@ -84,7 +90,7 @@ def collect(
     progress: ProgressFn | None = None,
 ) -> dict:
     cells = plan_cells(domain, langs, max_topics)
-    results, skipped = [], []
+    results, skipped, errors = [], [], []
     budget_hit = False
     for i, (topic, lang) in enumerate(cells, start=1):
         if progress:
@@ -97,6 +103,10 @@ def collect(
             skipped.append(f"{topic['id']}:{lang}")
         except CacheMiss:
             skipped.append(f"{topic['id']}:{lang}")
+        except SerpApiError as e:
+            # One bad cell must not throw away the rest of a paid run.
+            skipped.append(f"{topic['id']}:{lang}")
+            errors.append(f"{topic['id']}:{lang}: {e}")
 
     return {
         "domain": domain["id"],
@@ -107,6 +117,7 @@ def collect(
         "cells": results,
         "skipped": skipped,
         "budget_hit": budget_hit,
+        "errors": errors,
     }
 
 
@@ -171,6 +182,8 @@ def main(argv: list[str] | None = None) -> int:
         reason = "credit cap reached / not cached" if data["budget_hit"] else "not cached"
         print(f"Skipped ({reason}): {', '.join(data['skipped'])}")
         print("Re-run later: finished cells come from the cache for free.")
+    for e in data["errors"]:
+        print(f"ERROR {e}")
     return 0
 
 

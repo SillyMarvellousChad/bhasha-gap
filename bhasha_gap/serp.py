@@ -21,6 +21,10 @@ GOOGLE_DOMAIN = "google.co.in"
 # SerpApi reports an empty SERP as an error. For us that is a measurement
 # (zero supply), not a failure.
 _EMPTY_RESULT_ERRORS = ("hasn't returned any results",)
+# Some engines don't offer every Indian language as an interface language
+# (e.g. Autocomplete rejects hl=as for Assamese). The query itself is still in
+# the native script, so we retry without hl and flag the response.
+_UNSUPPORTED_HL_ERROR = "interface language - hl parameter"
 
 
 class CacheMiss(RuntimeError):
@@ -66,13 +70,14 @@ class SerpClient:
             return json.loads(path.read_text(encoding="utf-8"))
         if self.offline:
             raise CacheMiss(f"Not cached and running offline: {params}")
-        if self.max_live_calls is not None and self.live_calls >= self.max_live_calls:
-            raise BudgetExhausted(f"Credit cap of {self.max_live_calls} reached")
 
-        resp = requests.get(SEARCH_URL, params={**params, "api_key": self.api_key}, timeout=90)
-        data = resp.json()
-        self.live_calls += 1
-        error = data.get("error")
+        data = self._fetch(params)
+        error = data.get("error", "")
+        if _UNSUPPORTED_HL_ERROR in error and "hl" in params:
+            fallback = {k: v for k, v in params.items() if k != "hl"}
+            data = self._fetch(fallback)
+            data["hl_fallback"] = True
+            error = data.get("error", "")
         if error and not any(e in error for e in _EMPTY_RESULT_ERRORS):
             raise SerpApiError(f"{error} (params: {params})")
 
@@ -80,6 +85,13 @@ class SerpClient:
         data.pop("search_metadata", None)
         path.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
         return data
+
+    def _fetch(self, params: dict) -> dict:
+        if self.max_live_calls is not None and self.live_calls >= self.max_live_calls:
+            raise BudgetExhausted(f"Credit cap of {self.max_live_calls} reached")
+        self.live_calls += 1
+        resp = requests.get(SEARCH_URL, params={**params, "api_key": self.api_key}, timeout=90)
+        return resp.json()
 
     @staticmethod
     def autocomplete_params(q: str, hl: str) -> dict:
