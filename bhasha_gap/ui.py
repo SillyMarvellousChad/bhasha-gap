@@ -89,7 +89,9 @@ def masthead(data: dict, card: pd.DataFrame) -> str:
         dek = f"Bhasha Gap measures it using {n_searches} real Google searches from India."
     return (
         '<header class="masthead">'
-        '<div class="brand"><span class="wordmark">Bhasha Gap</span><span class="brand-native">भाषा</span></div>'
+        '<div class="brand"><div class="brand-name"><span class="wordmark">Bhasha Gap</span>'
+        '<span class="brand-native" lang="hi">भाषा</span></div>'
+        '<div class="brand-tag">Mapping India’s language <br>information gap</div></div>'
         f'<div class="kicker">Data investigation · {escape(data.get("domain_name", ""))} information in Indian languages</div>'
         f'<h1 class="headline">{headline}</h1>'
         f'<p class="dek">{escape(dek)}</p>'

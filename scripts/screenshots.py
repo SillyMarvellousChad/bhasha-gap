@@ -6,11 +6,12 @@ Uses the locally installed Chrome, so no browser download is needed.
     python scripts/screenshots.py
 """
 
+import os
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
-URL = "http://localhost:8501"
+URL = os.getenv("BHASHA_URL", "http://localhost:8501")
 OUT = Path("docs/screenshots")
 SECTIONS = {
     "1b_by_the_numbers": "What the search data shows",
