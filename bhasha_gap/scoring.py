@@ -1,0 +1,110 @@
+"""Turn raw SerpApi responses into supply (coverage) and demand measurements.
+
+Supply = how well a search results page serves a speaker of the language.
+Demand = how much people search the topic in that language, from Autocomplete.
+Gap    = high demand x low supply.
+"""
+
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass
+
+from .authority import classify, domain_of
+from .langdetect import detect, is_romanized_indic, matches_language
+
+# Google usually shows 7-10 organic results on page one. Dividing by at least
+# this many means a SERP with only 2 results, both native, is not scored 100%.
+EXPECTED_RESULTS = 8
+# A reader is well served once there are this many trustworthy native results.
+TRUSTED_TARGET = 3
+TRUSTED_MIN_WEIGHT = 0.8
+
+COVERAGE_WEIGHTS = {"native": 0.45, "trusted_native": 0.40, "native_paa": 0.15}
+
+
+@dataclass
+class ResultRow:
+    position: int
+    title: str
+    link: str
+    domain: str
+    script: str | None
+    detected_lang: str | None
+    native: bool
+    tier: str
+    authority: float
+
+
+def assess_serp(serp: dict, lang: str) -> dict:
+    """Summarise one Google SERP from the point of view of a `lang` reader."""
+    rows: list[ResultRow] = []
+    for i, r in enumerate(serp.get("organic_results", [])[:10], start=1):
+        text = f"{r.get('title', '')} {r.get('snippet', '')}"
+        link = r.get("link", "")
+        found = detect(text)
+        tier, weight = classify(link)
+        rows.append(ResultRow(
+            position=r.get("position", i),
+            title=r.get("title", ""),
+            link=link,
+            domain=domain_of(link),
+            script=found.script,
+            detected_lang=found.lang,
+            native=matches_language(text, lang),
+            tier=tier,
+            authority=weight,
+        ))
+
+    related = [q.get("question", "") for q in serp.get("related_questions", []) if q.get("question")]
+    native_count = sum(r.native for r in rows)
+    trusted_native = sum(r.native and r.authority >= TRUSTED_MIN_WEIGHT for r in rows)
+
+    return {
+        "results": [asdict(r) for r in rows],
+        "n_results": len(rows),
+        "native_count": native_count,
+        "native_share": native_count / max(len(rows), EXPECTED_RESULTS),
+        "trusted_native": trusted_native,
+        "authority_mean": sum(r.authority for r in rows) / len(rows) if rows else 0.0,
+        "related_questions": related,
+        "related_native": sum(matches_language(q, lang) for q in related),
+        "has_knowledge_graph": "knowledge_graph" in serp,
+        "has_ai_overview": "ai_overview" in serp,
+        "total_results": serp.get("search_information", {}).get("total_results"),
+    }
+
+
+def coverage_score(a: dict) -> float:
+    """0-100: how well one SERP serves a native reader."""
+    if a["n_results"] == 0:
+        return 0.0
+    parts = {
+        "native": a["native_share"],
+        "trusted_native": min(a["trusted_native"] / TRUSTED_TARGET, 1.0),
+        "native_paa": 1.0 if a["related_native"] > 0 else 0.0,
+    }
+    return round(100 * sum(COVERAGE_WEIGHTS[k] * v for k, v in parts.items()), 1)
+
+
+def assess_suggestions(suggestions: list[str], seed: str, lang: str) -> dict:
+    """Classify Autocomplete suggestions: what people actually type."""
+    seed_norm = seed.strip().lower()
+    rows = [
+        {
+            "text": s,
+            "native": matches_language(s, lang),
+            "romanized": lang != "en" and is_romanized_indic(s),
+        }
+        for s in suggestions
+        if s.strip().lower() != seed_norm
+    ]
+    return {
+        "suggestions": rows,
+        "demand_raw": sum(r["native"] for r in rows),
+        "romanized_count": sum(r["romanized"] for r in rows),
+    }
+
+
+def gap_score(demand: float, coverage: float) -> float:
+    """0-100: demand (normalised 0-100) that coverage fails to meet."""
+    return round(demand * (100 - coverage) / 100, 1)

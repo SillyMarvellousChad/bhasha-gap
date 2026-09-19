@@ -1,0 +1,151 @@
+import pytest
+
+from bhasha_gap.analysis import cells_frame, language_summary, results_frame
+from bhasha_gap.authority import classify
+from bhasha_gap.collect import collect, estimate_credits, plan_cells
+from bhasha_gap.langdetect import Detection, detect, is_romanized_indic, matches_language
+from bhasha_gap.scoring import assess_serp, assess_suggestions, coverage_score, gap_score
+from bhasha_gap.serp import CacheMiss, SerpClient
+
+
+# ------------------------------------------------------------ language detection
+@pytest.mark.parametrize("text, script, lang", [
+    ("मधुमेह के लक्षण क्या है", "Devanagari", "hi"),
+    ("मधुमेहाच्या रुग्णांनी काय खावे आणि काय टाळावे", "Devanagari", "mr"),
+    ("ডায়াবেটিসের লক্ষণ", "Bengali", "bn"),
+    ("நீரிழிவு நோய் அறிகுறிகள்", "Tamil", "ta"),
+    ("మధుమేహం లక్షణాలు", "Telugu", "te"),
+    ("Diabetes symptoms and treatment", "Latin", "en"),
+    ("", None, None),
+])
+def test_detect(text, script, lang):
+    assert detect(text) == Detection(script, lang)
+
+
+def test_ambiguous_devanagari_matches_both():
+    assert matches_language("मधुमेह", "hi")
+    assert matches_language("मधुमेह", "mr")
+
+
+def test_marathi_is_not_hindi():
+    assert not matches_language("मधुमेह म्हणजे काय आहे", "hi")
+    assert matches_language("मधुमेह म्हणजे काय आहे", "mr")
+
+
+def test_english_title_does_not_count_for_hindi_query():
+    assert not matches_language("Diabetes: Symptoms, Causes - Mayo Clinic", "hi")
+
+
+def test_romanized_hindi():
+    assert is_romanized_indic("sugar ka ilaj kya hai")
+    assert not is_romanized_indic("sugar level chart")
+
+
+# ------------------------------------------------------------ authority
+@pytest.mark.parametrize("url, tier", [
+    ("https://www.nhp.gov.in/disease/diabetes", "official"),
+    ("https://main.mohfw.gov.in/", "official"),
+    ("https://www.who.int/news-room", "official"),
+    ("https://www.aiims.edu/en.html", "official"),
+    ("https://www.mayoclinic.org/diseases", "medical"),
+    ("https://hi.wikipedia.org/wiki/मधुमेह", "reference"),
+    ("https://www.bbc.com/hindi/articles/x", "news"),
+    ("https://www.youtube.com/watch?v=abc", "ugc"),
+    ("https://some-random-blog.xyz/post", "unknown"),
+])
+def test_classify(url, tier):
+    assert classify(url)[0] == tier
+
+
+# ------------------------------------------------------------ scoring
+def serp(*results, related=()):
+    return {
+        "organic_results": [
+            {"position": i, "title": t, "snippet": "", "link": link} for i, (t, link) in enumerate(results, 1)
+        ],
+        "related_questions": [{"question": q} for q in related],
+    }
+
+
+def test_english_heavy_hindi_serp_scores_low():
+    a = assess_serp(serp(
+        ("मधुमेह के लक्षण क्या है", "https://www.nhp.gov.in/a"),
+        ("Diabetes - Mayo Clinic", "https://www.mayoclinic.org/b"),
+        ("Diabetes - WHO", "https://www.who.int/c"),
+    ), "hi")
+    assert a["native_count"] == 1
+    assert a["trusted_native"] == 1
+    assert a["native_share"] == pytest.approx(1 / 8)
+    assert coverage_score(a) < 25
+
+
+def test_well_served_serp_scores_high():
+    rows = [(f"मधुमेह के लक्षण {i} क्या है", f"https://site{i}.gov.in/") for i in range(8)]
+    a = assess_serp(serp(*rows, related=["मधुमेह का इलाज क्या है"]), "hi")
+    assert coverage_score(a) == 100.0
+
+
+def test_empty_serp_is_zero_coverage():
+    a = assess_serp({"error": "Google hasn't returned any results for this query."}, "ta")
+    assert a["n_results"] == 0 and coverage_score(a) == 0.0
+
+
+def test_suggestions_drop_seed_and_count_native():
+    d = assess_suggestions(["டெங்கு", "டெங்கு அறிகுறிகள்", "dengue symptoms in tamil"], "டெங்கு", "ta")
+    assert d["demand_raw"] == 1
+    assert len(d["suggestions"]) == 2
+
+
+def test_gap_score():
+    assert gap_score(100, 0) == 100
+    assert gap_score(100, 100) == 0
+    assert gap_score(50, 40) == 30
+
+
+# ------------------------------------------------------------ pipeline
+DOMAIN = {
+    "id": "test", "name": "Test", "languages": ["en", "hi"],
+    "topics": [{"id": "dengue", "label": "Dengue", "seeds": {"en": "dengue", "hi": "डेंगू"}}],
+}
+
+
+class FakeClient(SerpClient):
+    """Serves canned responses instead of calling SerpApi."""
+
+    def search(self, params):
+        self.live_calls += 1
+        if params["engine"] == "google_autocomplete":
+            if params["hl"] == "hi":
+                return {"suggestions": [{"value": "डेंगू के लक्षण क्या है"}, {"value": "dengue symptoms"}]}
+            return {"suggestions": [{"value": "dengue symptoms"}, {"value": "dengue treatment"}]}
+        if params["hl"] == "hi":
+            return serp(("Dengue - WHO", "https://www.who.int/x"), ("डेंगू के लक्षण", "https://youtube.com/y"))
+        return serp(("Dengue fever - CDC", "https://www.cdc.gov/x"), ("Dengue - Mayo", "https://mayoclinic.org/y"))
+
+
+def test_collect_end_to_end(tmp_path):
+    client = FakeClient("fake", tmp_path)
+    data = collect(DOMAIN, client, searches_per_cell=1)
+    assert [c["lang"] for c in data["cells"]] == ["en", "hi"]
+    hi = data["cells"][1]
+    assert hi["serps"][0]["query"] == "डेंगू के लक्षण क्या है"  # searched the real question, not the seed
+
+    cells = cells_frame(data).set_index("lang")
+    assert cells.loc["en", "coverage"] > cells.loc["hi", "coverage"]
+    assert cells.loc["hi", "gap"] > 0
+    assert len(results_frame(data)) == 4
+    assert set(language_summary(cells.reset_index())["lang"]) == {"en", "hi"}
+
+
+def test_offline_client_raises_on_miss_and_collect_skips(tmp_path):
+    client = SerpClient(None, tmp_path)
+    with pytest.raises(CacheMiss):
+        client.autocomplete("x", "hi")
+    data = collect(DOMAIN, client)
+    assert data["cells"] == [] and len(data["skipped"]) == 2
+
+
+def test_estimate_credits(tmp_path):
+    client = SerpClient(None, tmp_path)
+    cells = plan_cells(DOMAIN)
+    assert estimate_credits(client, cells, 2) == {"cells": 2, "max_credits": 6}
