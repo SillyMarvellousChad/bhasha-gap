@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from dotenv import load_dotenv
 
-from bhasha_gap import LANGUAGE_NAMES, language_label
+from bhasha_gap import LANGUAGE_NAMES, language_label, ui
 from bhasha_gap.analysis import cells_frame, key_findings, language_summary, load_results, pivot, results_frame
 from bhasha_gap.check import check_cost, check_question, load_checks, resolve_language, save_check
 from bhasha_gap.collect import collect, estimate_credits, load_domain, plan_cells, save_results
@@ -20,7 +20,7 @@ from bhasha_gap.langdetect import LANG_SCRIPT
 from bhasha_gap.serp import CacheMiss, SerpApiError, SerpClient
 
 load_dotenv()
-st.set_page_config(page_title="Bhasha Gap", page_icon="🗺️", layout="wide")
+st.set_page_config(page_title="Bhasha Gap", page_icon="🗣️", layout="wide", initial_sidebar_state="collapsed")
 
 RESULTS_DIR = Path("data/results")
 DOMAINS_DIR = Path("domains")
@@ -40,24 +40,7 @@ METRICS = {
 }
 PERCENT_METRICS = {"native_share", "mt_share"}
 
-st.markdown(
-    """
-    <style>
-      .block-container {padding-top: 2rem; max-width: 1300px;}
-      .hero h1 {margin-bottom: 0; font-size: 2.6rem;}
-      .hero p {font-size: 1.1rem; opacity: .8; margin-top: .25rem;}
-      .qchip {display:inline-block; padding:.2rem .6rem; margin:.15rem; border-radius:999px;
-              border:1px solid rgba(128,128,128,.35); font-size:.92rem;}
-      .qchip.off {opacity:.45; text-decoration: line-through;}
-      .finding {border:1px solid rgba(128,128,128,.25); border-left:4px solid #c8553d; border-radius:8px;
-                padding:.7rem .9rem; height:100%;}
-      .finding .label {font-size:.75rem; text-transform:uppercase; letter-spacing:.06em; opacity:.7;}
-      .finding .value {font-size:1.9rem; font-weight:700; line-height:1.2;}
-      .finding .text {font-size:.9rem; opacity:.9;}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+st.markdown(f"<style>{Path('assets/style.css').read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------- shared views
@@ -86,11 +69,12 @@ def results_table(rows: list[dict]) -> None:
     )
 
 
-# ---------------------------------------------------------------- sidebar
-def sidebar_collection() -> None:
-    with st.sidebar.expander("Collect new data", expanded=not any(RESULTS_DIR.glob("*.json"))):
+# ---------------------------------------------------------------- researcher tools
+def researcher_collection() -> None:
+    """Run new SerpApi collections. Lives in the Method tab: visitors never need it."""
+    with st.expander("🔬 For researchers: collect new data with SerpApi", expanded=not any(RESULTS_DIR.glob("*.json"))):
         domains = sorted(DOMAINS_DIR.glob("*.json"))
-        domain_path = st.selectbox("Domain", domains, format_func=lambda p: p.stem)
+        domain_path = st.selectbox("Topic area", domains, format_func=lambda p: load_domain(p)["name"])
         domain = load_domain(domain_path)
         langs = st.multiselect("Languages", domain["languages"], default=domain["languages"], format_func=language_label)
         max_topics = st.slider("Topics", 1, len(domain["topics"]), len(domain["topics"]))
@@ -122,65 +106,59 @@ def sidebar_collection() -> None:
             st.rerun()
 
 
-sidebar_collection()
+def section(title: str, subtitle: str = "") -> None:
+    st.markdown(f'<div class="section-title">{title}</div>'
+                + (f'<div class="section-sub">{subtitle}</div>' if subtitle else ""), unsafe_allow_html=True)
+
+
 result_files = sorted(RESULTS_DIR.glob("*.json"))
-
-st.markdown(
-    '<div class="hero"><h1>Bhasha Gap</h1>'
-    "<p>Hundreds of millions of Indians search in their own language. How often does the internet answer them in it?</p></div>",
-    unsafe_allow_html=True,
-)
-
 if not result_files:
-    st.info(
-        "No data yet. Add your `SERPAPI_API_KEY` to `.env`, then use **Collect new data** in the sidebar "
-        "or run `python -m bhasha_gap.collect`."
-    )
+    st.title("Bhasha Gap")
+    st.info("No data yet. Add your `SERPAPI_API_KEY` to `.env`, then collect data below "
+            "or run `python -m bhasha_gap.collect`.")
+    researcher_collection()
     st.stop()
 
-results_path = st.sidebar.selectbox("Dataset", result_files, format_func=lambda p: p.stem)
-data = load_results(results_path)
+datasets = {load_results(p)["domain_name"]: p for p in result_files}
+area = next(iter(datasets))
+if len(datasets) > 1:
+    area = st.segmented_control("Topic area", list(datasets), default=area) or area
+data = load_results(datasets[area])
 cells = cells_frame(data)
 results = results_frame(data)
 if cells.empty:
-    st.warning("This dataset has no cells.")
+    st.warning("This dataset has no results yet.")
     st.stop()
 
 langs = [lang for lang in data["languages"] if lang in set(cells["lang"])]
-summary = language_summary(cells).set_index("lang").reindex(langs)
-st.sidebar.caption(f"Collected {data['collected_at']} · {len(cells)} cells · domain: {data['domain_name']}")
-
-# ---------------------------------------------------------------- headline
-baseline = summary.loc["en"] if "en" in summary.index else None
 indic = [lang for lang in langs if lang != "en"]
-PER_ROW = 5
-cols = [c for start in range(0, len(langs), PER_ROW) for c in st.columns(PER_ROW)]
-for col, lang in zip(cols, langs):
-    row = summary.loc[lang]
-    delta = None
-    if baseline is not None and lang != "en":
-        delta = f"{row.native_share * 100 - baseline.native_share * 100:+.0f} vs EN"
-    col.metric(LANGUAGE_NAMES.get(lang, (lang, lang))[1] if lang != "en" else "English", f"{row.native_share * 100:.0f}%", delta,
-               help="Average share of top Google results written in this language")
-st.caption("**Native-language share** of page-one results for the questions people actually ask, per language.")
+summary = language_summary(cells).set_index("lang").reindex(langs)
+
+st.markdown(ui.hero(data, cells), unsafe_allow_html=True)
+
+section("How it works", "Three steps, no guesswork: every number on this page comes from a real Google search.")
+st.markdown(ui.how_it_works(), unsafe_allow_html=True)
+
+story_html = ui.story(data, cells)
+if story_html:
+    section("A real search, from our data",
+            "This is what Google actually showed for one of the questions we measured.")
+    st.markdown(story_html, unsafe_allow_html=True)
+
+section("Language leaderboard 🏆",
+        "How well Google serves each language, out of 100: are the answers in the language, and can you trust them?")
+st.markdown(ui.leaderboard(cells, results), unsafe_allow_html=True)
 
 findings = key_findings(data, cells, results)
 if findings:
-    st.markdown("#### What the search data shows")
-    for row_start in range(0, len(findings), 3):
-        for col, f in zip(st.columns(3), findings[row_start:row_start + 3]):
-            col.markdown(
-                f'<div class="finding"><div class="label">{html.escape(f["label"])}</div>'
-                f'<div class="value">{html.escape(f["value"])}</div>'
-                f'<div class="text">{html.escape(f["text"])}</div></div>',
-                unsafe_allow_html=True,
-            )
-    st.write("")
+    section("What the search data shows")
+    st.markdown(ui.findings_cards(findings), unsafe_allow_html=True)
 if data.get("skipped"):
-    st.caption(f"{len(data['skipped'])} cells not collected yet (credit cap). They are excluded above.")
+    st.caption(f"{len(data['skipped'])} topic/language combinations not collected yet. They are excluded above.")
 
+section("Explore the data 🧭", "Dig into every topic, language and search result, or check your own question.")
 tab_map, tab_check, tab_lang, tab_drill, tab_write, tab_method = st.tabs(
-    ["Gap map", "Check a question", "Languages & sources", "Drill down", "Write next", "Method"]
+    ["🗺️ Gap map", "🔎 Check a question", "📊 Languages & sources", "🔬 Drill down", "✍️ Write next", "📖 Method"]
 )
 
 # ---------------------------------------------------------------- gap map
@@ -370,3 +348,7 @@ with tab_write:
 # ---------------------------------------------------------------- method
 with tab_method:
     st.markdown(Path("docs/method.md").read_text(encoding="utf-8"))
+    researcher_collection()
+
+st.markdown('<div class="footer">Built with SerpApi · Every number comes from a real Google search · '
+            'No AI-generated data</div>', unsafe_allow_html=True)

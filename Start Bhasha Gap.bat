@@ -9,6 +9,7 @@ if not exist ".venv\Scripts\python.exe" (
 )
 
 echo Starting Bhasha Gap... your browser will open automatically.
+echo If it does not open, go to http://localhost:8501
 echo Keep this window open while you use the dashboard. Close it to stop.
 ".venv\Scripts\python.exe" -m streamlit run app.py --server.headless false
 goto :eof

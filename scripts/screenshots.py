@@ -12,6 +12,11 @@ from playwright.sync_api import sync_playwright
 
 URL = "http://localhost:8501"
 OUT = Path("docs/screenshots")
+SECTIONS = {
+    "1b_real_search": "A real search",
+    "1c_leaderboard": "Language leaderboard",
+    "1d_findings": "What the search data shows",
+}
 TABS = {
     "2_gap_map": ("Gap map", "Supply: coverage score"),
     "3_check_a_question": ("Check a question", None),
@@ -30,6 +35,10 @@ def main() -> None:
         page.get_by_text("What the search data shows").wait_for(timeout=30_000)
         page.wait_for_timeout(1500)
         page.screenshot(path=OUT / "1_overview.png")
+        for name, heading in SECTIONS.items():
+            page.locator(".section-title", has_text=heading).evaluate("el => el.scrollIntoView({block: 'start'})")
+            page.wait_for_timeout(500)
+            page.screenshot(path=OUT / f"{name}.png")
 
         tablist = page.get_by_role("tablist")
         for name, (tab, radio) in TABS.items():

@@ -370,3 +370,30 @@ def test_on_topic(text, seed, expected):
 def test_off_topic_suggestions_are_not_demand_or_queries():
     d = assess_suggestions(["ଡେଙ୍ଗୁ symptoms", "ସ୍ବଭାବ", "ଭାନିଜି"], "ଡେଙ୍ଗୁ", "or")
     assert d["demand_raw"] == 0 and d["off_topic_count"] == 2
+
+
+# ------------------------------------------------------------ UI building blocks
+def test_ui_blocks_render_and_escape(tmp_path):
+    from bhasha_gap import ui
+    from bhasha_gap.analysis import key_findings
+
+    data = collect(DOMAIN, FakeClient("fake", tmp_path))
+    data["cells"][1]["suggestions"].insert(0, {"text": "डेंगू <script>x</script>", "native": True})
+    cells, results = cells_frame(data), results_frame(data)
+    hero = ui.hero(data, cells)
+    assert "<script>" not in hero and "&lt;script&gt;" in hero
+    assert "2</b> real Google searches" in hero
+    assert "Step 3" in ui.how_it_works()
+    assert ui.story(data, cells) == ""  # the fake Hindi SERP has only 2 results: too few to tell a story
+    cells.loc[cells["lang"] == "hi", "n_results"] = 8
+    story = ui.story(data, cells)
+    assert "डेंगू के लक्षण क्या है" in story and "Google Translate copy" not in story
+    board = ui.leaderboard(cells, results)
+    assert board.index("English") < board.index("Hindi")  # English is better served in the fake data
+    assert "🛡️" in ui.findings_cards(key_findings(data, cells, results))
+
+
+@pytest.mark.parametrize("score, label", [(90, "Well served"), (75, "Mostly OK"), (55, "Patchy"), (20, "Poorly served")])
+def test_mood(score, label):
+    from bhasha_gap.ui import mood
+    assert mood(score)[1] == label

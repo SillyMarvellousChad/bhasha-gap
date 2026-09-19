@@ -1,4 +1,5 @@
 [theme]
+base = "light"
 primaryColor = "#c8553d"
 font = "sans serif"
 
@@ -7,3 +8,7 @@ headless = true
 
 [client]
 toolbarMode = "minimal"
+
+[logger]
+# Also hides Streamlit's developer "install skills" popup, which visitors should not see.
+hideWelcomeMessage = true

@@ -1,0 +1,102 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Noto+Sans:wght@400;600;700&display=swap');
+
+:root {
+  --ink: #2b2d42;
+  --muted: #5c6178;
+  --line: rgba(43, 45, 66, .12);
+  --accent: #e76f51;
+  --card: #ffffff;
+}
+
+.stApp { font-family: 'Noto Sans', 'Nirmala UI', sans-serif; }
+.block-container { padding-top: 1.5rem; max-width: 1200px; }
+h1, h2, h3, h4 { font-family: 'Baloo 2', 'Noto Sans', sans-serif !important; color: var(--ink); }
+
+.section-title { font-family: 'Baloo 2', sans-serif; font-size: 1.7rem; font-weight: 700; color: var(--ink);
+                 margin: 2.2rem 0 .2rem; }
+.section-sub { color: var(--muted); margin-bottom: 1rem; }
+
+/* ---------- hero ---------- */
+.hero { position: relative; overflow: hidden; border-radius: 28px; padding: 2.4rem 2.6rem 2rem;
+        background: radial-gradient(circle at 12% 20%, #ffe8d6 0, transparent 45%),
+                    radial-gradient(circle at 88% 15%, #dff3ec 0, transparent 40%),
+                    radial-gradient(circle at 70% 95%, #e6e8ff 0, transparent 45%),
+                    linear-gradient(135deg, #fff8f1, #f4f7ff); border: 1px solid var(--line); }
+.hero-kicker { font-weight: 600; color: var(--accent); letter-spacing: .02em; }
+.hero h1 { font-family: 'Baloo 2', sans-serif !important; font-size: 4rem; line-height: 1; margin: .3rem 0 .4rem;
+           padding: 0; color: var(--ink); }
+.hero-tag { font-size: 1.2rem; color: var(--muted); max-width: 720px; margin: 0 0 1.4rem; }
+.bubbles { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: 1.4rem; }
+.bubble { display: inline-block; padding: .45rem .9rem; border-radius: 18px 18px 18px 4px; font-size: 1.05rem;
+          background: color-mix(in srgb, var(--c) 14%, white); border: 1.5px solid color-mix(in srgb, var(--c) 45%, white);
+          color: var(--ink); box-shadow: 0 2px 8px rgba(0,0,0,.05); animation: float 4s ease-in-out infinite alternate; }
+@keyframes float { from { transform: translateY(0); } to { transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .bubble { animation: none; } }
+.hero-stats { font-size: 1rem; color: var(--ink); }
+.hero-note { font-size: .8rem; color: var(--muted); margin-top: .3rem; }
+
+/* ---------- how it works ---------- */
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+.step { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 1.2rem 1.3rem; }
+.step-icon { font-size: 2.2rem; }
+.step-num { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); font-weight: 700; }
+.step-title { font-family: 'Baloo 2', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--ink); }
+.step-text { color: var(--muted); font-size: .95rem; }
+
+/* ---------- story: a real search ---------- */
+.story { background: var(--card); border: 1px solid var(--line); border-radius: 24px; padding: 1.4rem 1.6rem;
+         box-shadow: 0 6px 24px rgba(43,45,66,.06); }
+.story-who { font-size: 1.05rem; color: var(--ink); margin-bottom: .6rem; }
+.searchbar { display: flex; gap: .6rem; align-items: center; border: 1px solid #dfe1e5; border-radius: 999px;
+             padding: .6rem 1.1rem; font-size: 1.15rem; box-shadow: 0 1px 6px rgba(32,33,36,.18); margin-bottom: 1rem; }
+.results { display: flex; flex-direction: column; gap: .7rem; }
+.result { padding: .5rem .2rem; border-bottom: 1px dashed var(--line); }
+.r-title { color: #1a0dab; font-size: 1.05rem; }
+.r-domain { color: #188038; font-size: .85rem; }
+.r-badges { margin-top: .25rem; }
+.badge { display: inline-block; font-size: .78rem; font-weight: 600; padding: .12rem .55rem; border-radius: 999px;
+         margin-right: .35rem; }
+.badge.ok { background: #e3f5ec; color: #1b7f5a; }
+.badge.mt { background: #efe8fb; color: #6a4bb0; }
+.badge.off { background: #e8f0fb; color: #2f5d9b; }
+.badge.warn { background: #fff1e0; color: #a35c00; }
+.badge.info { background: #eef0f4; color: #454a64; }
+.story-verdict { margin-top: 1rem; font-size: 1.1rem; color: var(--ink); background: #fff4ef; border-radius: 14px;
+                 padding: .8rem 1rem; }
+
+/* ---------- leaderboard ---------- */
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 1rem; }
+.tile { position: relative; background: var(--card); border: 1px solid var(--line); border-top: 5px solid var(--c);
+        border-radius: 20px; padding: 1rem 1rem 1.1rem; text-align: center; }
+.tile-rank { position: absolute; top: .6rem; left: .8rem; font-weight: 700; color: var(--muted); font-size: 1.05rem; }
+.ring { --size: 86px; width: var(--size); height: var(--size); margin: .2rem auto .5rem; border-radius: 50%;
+        background: conic-gradient(var(--c) calc(var(--p) * 1%), #eef0f4 0); display: grid; place-items: center; }
+.ring span { width: calc(var(--size) - 18px); height: calc(var(--size) - 18px); border-radius: 50%; background: #fff;
+             display: grid; place-items: center; font-family: 'Baloo 2', sans-serif; font-size: 1.6rem; font-weight: 800;
+             color: var(--ink); }
+.tile-native { font-size: 1.5rem; font-weight: 700; color: var(--c); line-height: 1.2; }
+.tile-name { color: var(--muted); font-size: .9rem; margin-bottom: .4rem; }
+.baseline { font-size: .7rem; background: #eef0f4; border-radius: 999px; padding: .05rem .45rem; }
+.tile-mood { font-weight: 600; color: var(--ink); margin-bottom: .3rem; }
+.tile-line { font-size: .82rem; color: var(--muted); }
+
+/* ---------- findings ---------- */
+.findings { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+.finding { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 1.1rem 1.2rem; }
+.f-icon { font-size: 1.8rem; }
+.finding .label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); font-weight: 700; }
+.finding .value { font-family: 'Baloo 2', sans-serif; font-size: 2.2rem; font-weight: 800; line-height: 1.1; color: var(--ink); }
+.finding .text { font-size: .92rem; color: var(--muted); }
+
+/* ---------- misc ---------- */
+.qchip { display: inline-block; padding: .2rem .7rem; margin: .15rem; border-radius: 999px;
+         border: 1px solid var(--line); font-size: .95rem; background: #fafbfd; }
+.qchip.off { opacity: .45; text-decoration: line-through; }
+.stTabs [data-baseweb="tab"] { font-size: 1rem; }
+.footer { text-align: center; color: var(--muted); font-size: .85rem; margin: 3rem 0 1rem; }
+
+@media (max-width: 640px) {
+  .hero { padding: 1.6rem 1.2rem; border-radius: 20px; }
+  .hero h1 { font-size: 2.8rem; }
+  .hero-tag { font-size: 1.05rem; }
+}
